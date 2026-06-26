@@ -279,24 +279,31 @@ function handleDropFiles(e) {
 }
 
 function addFilesFromInput(fileList) {
-  // When coming from webkitdirectory, derive client from path
   const files = [...fileList].filter(f => f.name.match(/\.xlsx?$/i));
   files.forEach(f => {
-    // f.webkitRelativePath = "Mustika/2025_04_-_CPPR_-_Mustika_-_v1.xlsx"
-    const client = guessClientFromPath(f.webkitRelativePath, f.name);
+    // webkitRelativePath examples:
+    //   "Mustika/2025 04 - CPPR - Mustika - v1.xlsx"       → client = "Mustika"
+    //   "Client Data/Mustika/2025 04 - CPPR - ....xlsx"    → client = "Mustika"
+    //   "2025 04 - CPPR - Mustika - v1.xlsx"               → no folder
+    const rel = f.webkitRelativePath || '';
+    const parts = rel.split('/').filter(Boolean);
+    // The folder immediately containing the file = parts[parts.length - 2]
+    const client = parts.length >= 2 ? parts[parts.length - 2] : 'Inconnu';
     addFile(f, client);
   });
   updateUI();
 }
 
-// Recursively scan dropped entries (files + folders)
+// Recursively scan dropped entries.
+// Rule: the folder that directly contains .xlsx files = client name.
+// Works whether you drop "Client Data/" (2 levels) or "Mustika/" (1 level).
 async function scanEntries(entries) {
   const status = document.getElementById('scan-status');
   status.style.display = 'block';
   status.innerHTML = '🔍 Scan en cours...';
   const allFiles = [];
   for (const entry of entries) {
-    await collectFromEntry(entry, allFiles, entry.isDirectory ? entry.name : null);
+    await collectFromEntry(entry, allFiles, null);
   }
   const xlsx = allFiles.filter(({file}) => file.name.match(/\.xlsx?$/i));
   if (!xlsx.length) {
@@ -307,29 +314,36 @@ async function scanEntries(entries) {
   updateUI();
 }
 
-async function collectFromEntry(entry, result, clientName, depth) {
-  depth = depth || 0;
+async function readAllEntries(reader) {
+  let all = [];
+  while (true) {
+    const batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+    if (!batch.length) break;
+    all = all.concat(batch);
+  }
+  return all;
+}
+
+async function collectFromEntry(entry, result, inheritedClient) {
   if (entry.isFile) {
     const file = await new Promise((res, rej) => entry.file(res, rej));
-    result.push({ file, client: clientName || guessClientFromFilename(file.name) });
-  } else if (entry.isDirectory) {
-    const reader = entry.createReader();
-    // readEntries may return results in batches — loop until empty
-    let subEntries = [];
-    while (true) {
-      const batch = await new Promise((res, rej) => reader.readEntries(res, rej));
-      if (!batch.length) break;
-      subEntries = subEntries.concat(batch);
+    if (file.name.match(/\.xlsx?$/i)) {
+      // inheritedClient = name of the folder that contains this file
+      result.push({ file, client: inheritedClient || 'Inconnu' });
     }
+  } else if (entry.isDirectory) {
+    const subEntries = await readAllEntries(entry.createReader());
+    const hasExcel = subEntries.some(s => s.isFile && s.name.match(/\.xlsx?$/i));
     for (const sub of subEntries) {
-      // depth=0 : we are inside the dropped folder (e.g. "Client Data")
-      // depth=1 : we are inside a client subfolder (e.g. "Mustika") → use its name as client
-      // depth>=1 : keep the client name already set
-      const nextClient = depth === 0 ? null : (clientName || entry.name);
-      const nextDepth  = depth === 0 ? 1 : depth + 1;
-      // If sub is a directory at depth 0, its name is the client name
-      const subClient  = (sub.isDirectory && depth === 0) ? sub.name : nextClient;
-      await collectFromEntry(sub, result, subClient, nextDepth);
+      if (sub.isFile) {
+        // This directory directly contains Excel files → it is the client folder
+        if (hasExcel) {
+          await collectFromEntry(sub, result, entry.name);
+        }
+      } else {
+        // Sub-directory: go deeper, pass along client if already known
+        await collectFromEntry(sub, result, inheritedClient);
+      }
     }
   }
 }
@@ -437,17 +451,18 @@ async function parseFile(file, client) {
     const r = new FileReader();
     r.onload = e => {
       try {
-        const wb = XLSX.read(e.target.result, { type:'binary' });
+        const wb = XLSX.read(e.target.result, { type:'binary', cellDates: false });
 
-        // Billing Data
+        // Billing Data — raw:true keeps dates as numeric serials
         const bdSheet = wb.Sheets['Billing Data'] || wb.Sheets[wb.SheetNames[0]];
-        const bd = XLSX.utils.sheet_to_json(bdSheet, { header:1, defval:null });
+        const bd = XLSX.utils.sheet_to_json(bdSheet, { header:1, defval:null, raw:true });
         const billingRows = [];
         for (let i = 1; i < bd.length; i++) {
           const row = bd[i];
-          if (!row[0] || isNaN(row[0])) continue;
+          const serial = typeof row[0] === 'number' ? row[0] : null;
+          if (!serial || serial < 40000) continue;
           billingRows.push({
-            dateSerial: row[0], cooling: +row[1]||0, chiller: +row[2]||0,
+            dateSerial: serial, cooling: +row[1]||0, chiller: +row[2]||0,
             chwp: +row[3]||0, cwp: +row[4]||0, ct: +row[5]||0,
             aux: +row[6]||0, totalPlant: +row[7]||0, eff: +row[8]||0,
           });
