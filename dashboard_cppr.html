@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPPR — Energy Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #181c27; --surface2: #1e2333;
+    --border: #2a3050; --accent: #3b82f6; --accent2: #06b6d4;
+    --accent3: #8b5cf6; --good: #10b981; --warn: #f59e0b; --bad: #ef4444;
+    --text: #e2e8f0; --muted: #64748b; --label: #94a3b8;
+  }
+  body { font-family: 'Inter','Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 32px; border-bottom:1px solid var(--border);
+    background:var(--surface); position:sticky; top:0; z-index:100;
+  }
+  .logo { display:flex; align-items:center; gap:10px; }
+  .logo-icon { width:32px; height:32px; background:linear-gradient(135deg,var(--accent),var(--accent3)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .logo-text { font-size:15px; font-weight:700; letter-spacing:.5px; }
+  .logo-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:8px; border:none; cursor:pointer; font-size:13px; font-weight:600; transition:all .15s; }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-primary:hover { background:#2563eb; }
+  .btn-secondary { background:var(--surface2); color:var(--label); border:1px solid var(--border); }
+  .btn-secondary:hover { border-color:var(--accent); color:var(--text); }
+  .btn-sm { padding:6px 14px; font-size:12px; }
+
+  /* DROP ZONE */
+  #drop-zone {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:calc(100vh - 65px); gap:20px; padding:40px;
+  }
+  .drop-area {
+    display:grid; grid-template-columns:1fr 1fr; gap:16px;
+    width:100%; max-width:720px;
+  }
+  .drop-box {
+    border:2px dashed var(--border); border-radius:20px; padding:40px 28px;
+    text-align:center; cursor:pointer; transition:all .2s;
+    background:var(--surface);
+  }
+  .drop-box:hover, .drop-box.drag-over { border-color:var(--accent); background:rgba(59,130,246,.06); }
+  .drop-icon { font-size:40px; margin-bottom:12px; }
+  .drop-title { font-size:16px; font-weight:700; margin-bottom:6px; }
+  .drop-hint { font-size:12px; color:var(--muted); line-height:1.6; }
+  .drop-badge { display:inline-block; margin-top:10px; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+  .badge-blue { background:rgba(59,130,246,.15); color:var(--accent); }
+  .badge-purple { background:rgba(139,92,246,.15); color:var(--accent3); }
+
+  #file-input { display:none; }
+  #folder-input { display:none; }
+
+  .file-list { display:flex; flex-direction:column; gap:6px; width:100%; max-width:720px; max-height:260px; overflow-y:auto; }
+  .file-item { display:flex; align-items:center; justify-content:space-between; padding:9px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; font-size:12px; }
+  .file-item .name { color:var(--text); font-weight:500; }
+  .file-item .meta { color:var(--muted); font-size:10px; margin-top:1px; }
+  .file-item-left { display:flex; align-items:center; gap:10px; }
+  .client-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  /* SCAN STATUS */
+  #scan-status { font-size:13px; color:var(--muted); }
+  #scan-status .count { color:var(--accent); font-weight:700; }
+
+  /* DASHBOARD */
+  #dashboard { display:none; }
+  .dash-header {
+    padding:18px 32px; border-bottom:1px solid var(--border);
+    background:var(--surface); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .dash-title { font-size:18px; font-weight:700; }
+  .dash-period { font-size:12px; color:var(--muted); }
+  .filters { display:flex; gap:10px; flex-wrap:wrap; }
+  select { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 12px; font-size:13px; cursor:pointer; }
+  select:focus { outline:none; border-color:var(--accent); }
+
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1px; background:var(--border); border-bottom:1px solid var(--border); }
+  .kpi { background:var(--surface); padding:22px 26px; display:flex; flex-direction:column; gap:4px; }
+  .kpi-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; }
+  .kpi-value { font-size:26px; font-weight:800; letter-spacing:-.5px; }
+  .kpi-unit { font-size:11px; color:var(--muted); }
+  .blue{color:var(--accent);} .cyan{color:var(--accent2);} .purple{color:var(--accent3);} .green{color:var(--good);}
+
+  .charts-area { padding:24px 32px; display:flex; flex-direction:column; gap:20px; }
+  .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .chart-row.full { grid-template-columns:1fr; }
+  @media(max-width:900px){.chart-row{grid-template-columns:1fr;}}
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .card-head { padding:14px 18px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+  .card-title { font-size:13px; font-weight:600; }
+  .card-subtitle { font-size:11px; color:var(--muted); }
+  .card-body { padding:16px 18px; }
+  .chart-wrap { position:relative; height:220px; }
+  .chart-wrap-tall { position:relative; height:270px; }
+
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { text-align:left; padding:9px 13px; font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); border-bottom:1px solid var(--border); background:var(--surface2); position:sticky; top:0; }
+  td { padding:8px 13px; border-bottom:1px solid rgba(42,48,80,.5); }
+  tr:hover td { background:rgba(59,130,246,.04); }
+  .eff-good{color:var(--good);font-weight:600;} .eff-mid{color:var(--warn);font-weight:600;} .eff-bad{color:var(--bad);font-weight:600;}
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+  .tag-blue{background:rgba(59,130,246,.15);color:var(--accent);} .tag-green{background:rgba(16,185,129,.15);color:var(--good);}
+  .empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+
+  #loader { display:none; position:fixed; inset:0; background:rgba(15,17,23,.85); z-index:999; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+  #loader.show{display:flex;}
+  .spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loader-text{font-size:13px;color:var(--muted);}
+
+  .progress-bar { width:280px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+  .progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .3s; }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <div class="loader-text" id="loader-text">Lecture des fichiers...</div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text">CPPR Dashboard</div>
+      <div class="logo-sub">Chiller Plant Performance Report</div>
+    </div>
+  </div>
+  <button class="btn btn-secondary btn-sm" onclick="resetDashboard()">➕ Changer de données</button>
+</header>
+
+<!-- DROP ZONE -->
+<div id="drop-zone">
+  <div class="drop-area">
+    <!-- Dossier client -->
+    <div class="drop-box" id="drop-folder"
+         ondragover="handleDragOver(event,'drop-folder')"
+         ondragleave="handleDragLeave('drop-folder')"
+         ondrop="handleDrop(event)"
+         onclick="document.getElementById('folder-input').click()">
+      <div class="drop-icon">📁</div>
+      <div class="drop-title">Dossier client</div>
+      <div class="drop-hint">Glissez un dossier entier<br>(ex: <strong>Mustika/</strong>)<br>Tous les Excel seront lus</div>
+      <div class="drop-badge badge-purple">Dossier</div>
+    </div>
+    <!-- Fichiers individuels -->
+    <div class="drop-box" id="drop-files"
+         ondragover="handleDragOver(event,'drop-files')"
+         ondragleave="handleDragLeave('drop-files')"
+         ondrop="handleDropFiles(event)"
+         onclick="document.getElementById('file-input').click()">
+      <div class="drop-icon">📄</div>
+      <div class="drop-title">Fichiers Excel</div>
+      <div class="drop-hint">Glissez un ou plusieurs .xlsx<br>directement<br>&nbsp;</div>
+      <div class="drop-badge badge-blue">Fichiers</div>
+    </div>
+  </div>
+
+  <input type="file" id="file-input" accept=".xlsx,.xls" multiple onchange="addFilesFromInput(this.files)">
+  <input type="file" id="folder-input" webkitdirectory multiple accept=".xlsx,.xls" onchange="addFilesFromInput(this.files)">
+
+  <div id="scan-status" style="display:none"></div>
+  <div class="file-list" id="file-list"></div>
+  <button class="btn btn-primary" id="load-btn" style="display:none" onclick="buildDashboard()">
+    ▶ Afficher le dashboard
+  </button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="dash-header">
+    <div>
+      <div class="dash-title" id="dash-title">Dashboard CPPR</div>
+      <div class="dash-period" id="dash-period"></div>
+    </div>
+    <div class="filters">
+      <select id="sel-client" onchange="filterDashboard()"><option value="">Tous les clients</option></select>
+      <select id="sel-month" onchange="filterDashboard()"><option value="">Tous les mois</option></select>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Cooling Load Total</div><div class="kpi-value blue" id="kpi-cooling">—</div><div class="kpi-unit">TRh</div></div>
+    <div class="kpi"><div class="kpi-label">Consommation électrique</div><div class="kpi-value cyan" id="kpi-power">—</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Efficacité moyenne</div><div class="kpi-value purple" id="kpi-eff">—</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Jours de données</div><div class="kpi-value green" id="kpi-days">—</div><div class="kpi-unit">jours</div></div>
+    <div class="kpi"><div class="kpi-label">RNS</div><div class="kpi-value" id="kpi-rns">—</div><div class="kpi-unit">/ Max <span id="kpi-rns-max">—</span></div></div>
+    <div class="kpi"><div class="kpi-label">Total Électricité</div><div class="kpi-value" id="kpi-elec">—</div><div class="kpi-unit">kWh (Site Metrics)</div></div>
+  </div>
+
+  <div class="charts-area">
+    <div class="chart-row full">
+      <div class="card">
+        <div class="card-head">
+          <div><div class="card-title">Cooling Load & Consommation — Évolution journalière</div><div class="card-subtitle">TRh vs kWh chiller plant</div></div>
+          <span class="tag tag-blue">Billing Data</span>
+        </div>
+        <div class="card-body"><div class="chart-wrap-tall"><canvas id="chart-load"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Efficacité (kW/TR)</div><div class="card-subtitle">Évolution journalière</div></div></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="chart-eff"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Répartition de la puissance</div><div class="card-subtitle">Chiller, CHWP, CWP, CT, Aux</div></div></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="chart-breakdown"></canvas></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Détail journalier</div><div class="card-subtitle">Billing Data</div></div>
+        <span class="tag tag-green" id="table-count"></span>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div style="max-height:340px;overflow-y:auto">
+          <table><thead><tr>
+            <th>Date</th><th>Client</th><th>Cooling Load (TRh)</th>
+            <th>Chiller (kWh)</th><th>CHWP (kWh)</th><th>CWP (kWh)</th>
+            <th>CT (kWh)</th><th>Aux (kWh)</th><th>Total Plant (kWh)</th><th>Eff (kW/TR)</th>
+          </tr></thead><tbody id="table-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────
+let allData = [];
+let filteredRows = [];
+let charts = {};
+const pendingFiles = []; // { file, client }
+const CLIENT_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#84cc16'];
+const clientColorMap = {};
+let colorIdx = 0;
+
+function clientColor(name) {
+  if (!clientColorMap[name]) clientColorMap[name] = CLIENT_COLORS[colorIdx++ % CLIENT_COLORS.length];
+  return clientColorMap[name];
+}
+
+// ── DRAG & DROP ────────────────────────────────
+function handleDragOver(e, id) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById(id).classList.add('drag-over');
+}
+function handleDragLeave(id) {
+  document.getElementById(id).classList.remove('drag-over');
+}
+
+// DROP ON FOLDER BOX — reads folder recursively
+function handleDrop(e) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById('drop-folder').classList.remove('drag-over');
+  const items = [...e.dataTransfer.items];
+  const entries = items.map(i => i.webkitGetAsEntry ? i.webkitGetAsEntry() : null).filter(Boolean);
+  if (!entries.length) return;
+  scanEntries(entries);
+}
+
+// DROP ON FILES BOX — only .xlsx files
+function handleDropFiles(e) {
+  e.preventDefault(); e.stopPropagation();
+  document.getElementById('drop-files').classList.remove('drag-over');
+  const files = [...e.dataTransfer.files].filter(f => f.name.match(/\.xlsx?$/i));
+  files.forEach(f => addFile(f, guessClientFromFilename(f.name)));
+  updateUI();
+}
+
+function addFilesFromInput(fileList) {
+  // When coming from webkitdirectory, derive client from path
+  const files = [...fileList].filter(f => f.name.match(/\.xlsx?$/i));
+  files.forEach(f => {
+    // f.webkitRelativePath = "Mustika/2025_04_-_CPPR_-_Mustika_-_v1.xlsx"
+    const client = guessClientFromPath(f.webkitRelativePath, f.name);
+    addFile(f, client);
+  });
+  updateUI();
+}
+
+// Recursively scan dropped entries (files + folders)
+async function scanEntries(entries) {
+  const status = document.getElementById('scan-status');
+  status.style.display = 'block';
+  status.innerHTML = '🔍 Scan en cours...';
+  const allFiles = [];
+  for (const entry of entries) {
+    await collectFromEntry(entry, allFiles, entry.isDirectory ? entry.name : null);
+  }
+  const xlsx = allFiles.filter(({file}) => file.name.match(/\.xlsx?$/i));
+  if (!xlsx.length) {
+    status.innerHTML = '⚠️ Aucun fichier Excel trouvé dans ce dossier.';
+    return;
+  }
+  xlsx.forEach(({file, client}) => addFile(file, client));
+  updateUI();
+}
+
+async function collectFromEntry(entry, result, clientName) {
+  if (entry.isFile) {
+    const file = await new Promise((res, rej) => entry.file(res, rej));
+    result.push({ file, client: clientName || guessClientFromFilename(file.name) });
+  } else if (entry.isDirectory) {
+    // The folder name is the client name
+    const reader = entry.createReader();
+    const subEntries = await new Promise((res, rej) => reader.readEntries(res, rej));
+    for (const sub of subEntries) {
+      await collectFromEntry(sub, result, entry.name);
+    }
+  }
+}
+
+function guessClientFromPath(relPath, filename) {
+  // "Mustika/file.xlsx" → "Mustika"
+  if (relPath && relPath.includes('/')) return relPath.split('/')[0];
+  return guessClientFromFilename(filename);
+}
+function guessClientFromFilename(name) {
+  // 2025_04_-_CPPR_-_Mustika_-_v1.xlsx → Mustika
+  const m = name.match(/cppr[_\-]+([a-zA-Z][^_\-\.]+)/i);
+  if (m) return m[1];
+  const parts = name.replace(/\.xlsx?$/i,'').split(/[_\-]+/);
+  return parts.find(p => p.length > 2 && isNaN(p)) || 'Inconnu';
+}
+function guessPeriodFromFilename(name) {
+  const m = name.match(/(\d{4})[_\-](\d{2})/);
+  if (m) return m[1] + '-' + m[2];
+  return null;
+}
+
+function addFile(file, client) {
+  if (pendingFiles.find(p => p.file.name === file.name && p.client === client)) return;
+  pendingFiles.push({ file, client });
+}
+
+function updateUI() {
+  const status = document.getElementById('scan-status');
+  status.style.display = 'block';
+  status.innerHTML = `<span class="count">${pendingFiles.length}</span> fichier(s) trouvé(s)`;
+
+  const fileList = document.getElementById('file-list');
+  fileList.innerHTML = '';
+  pendingFiles.forEach(({file, client}) => {
+    const color = clientColor(client);
+    const period = guessPeriodFromFilename(file.name);
+    const el = document.createElement('div');
+    el.className = 'file-item';
+    el.innerHTML = `
+      <div class="file-item-left">
+        <div class="client-dot" style="background:${color}"></div>
+        <div>
+          <div class="name">${file.name}</div>
+          <div class="meta">👤 ${client}${period ? '  📅 ' + period : ''}</div>
+        </div>
+      </div>
+      <span style="color:var(--good);font-size:11px;">✓</span>
+    `;
+    fileList.appendChild(el);
+  });
+  document.getElementById('load-btn').style.display = pendingFiles.length ? 'inline-flex' : 'none';
+}
+
+// ── EXCEL PARSING ──────────────────────────────
+function excelDateToJS(serial) {
+  if (!serial || isNaN(serial)) return null;
+  return new Date(Math.round((serial - 25569) * 86400 * 1000));
+}
+function fmtDate(serial) {
+  const d = excelDateToJS(serial);
+  if (!d) return '—';
+  return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+function fmtDateShort(serial) {
+  const d = excelDateToJS(serial);
+  if (!d) return '';
+  return d.getDate() + '/' + (d.getMonth()+1);
+}
+function fmtNum(n, dec=0) {
+  if (n == null || isNaN(n)) return '—';
+  return n.toLocaleString('fr-FR', { minimumFractionDigits:dec, maximumFractionDigits:dec });
+}
+function fmtBig(n) {
+  if (n == null || isNaN(n)) return '—';
+  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'k';
+  return fmtNum(n, 1);
+}
+
+async function parseFile(file, client) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type:'binary' });
+        const period = guessPeriodFromFilename(file.name);
+
+        // Billing Data
+        const bdSheet = wb.Sheets['Billing Data'] || wb.Sheets[wb.SheetNames[0]];
+        const bd = XLSX.utils.sheet_to_json(bdSheet, { header:1, defval:null });
+        const billingRows = [];
+        for (let i = 1; i < bd.length; i++) {
+          const row = bd[i];
+          if (!row[0] || isNaN(row[0])) continue;
+          billingRows.push({
+            dateSerial: row[0], cooling: +row[1]||0, chiller: +row[2]||0,
+            chwp: +row[3]||0, cwp: +row[4]||0, ct: +row[5]||0,
+            aux: +row[6]||0, totalPlant: +row[7]||0, eff: +row[8]||0,
+          });
+        }
+
+        // Site Metrics
+        let metrics = {};
+        const smSheet = wb.Sheets['Site Metrics'];
+        if (smSheet) {
+          const sm = XLSX.utils.sheet_to_json(smSheet, { header:1, defval:null });
+          if (sm.length > 1 && sm[1]) {
+            metrics = { rns:+sm[1][1]||0, maxRns:+sm[1][2]||0, totalElec:+sm[1][3]||0 };
+          }
+        }
+        res({ client, period: period||'—', billing: billingRows, metrics });
+      } catch(err) { rej(err); }
+    };
+    r.onerror = rej;
+    r.readAsBinaryString(file);
+  });
+}
+
+// ── BUILD DASHBOARD ────────────────────────────
+async function buildDashboard() {
+  showLoader(true, 'Lecture des fichiers...');
+  allData = [];
+  const total = pendingFiles.length;
+
+  for (let i = 0; i < pendingFiles.length; i++) {
+    const { file, client } = pendingFiles[i];
+    setProgress(Math.round((i / total) * 100), `Lecture : ${file.name}`);
+    try {
+      const d = await parseFile(file, client);
+      allData.push(d);
+    } catch(e) { console.error('Error', file.name, e); }
+  }
+
+  setProgress(100, 'Construction du dashboard...');
+
+  // Populate filters
+  const clients = [...new Set(allData.map(d => d.client))].sort();
+  const periods = [...new Set(allData.map(d => d.period).filter(p => p !== '—'))].sort();
+  const selC = document.getElementById('sel-client');
+  const selM = document.getElementById('sel-month');
+  selC.innerHTML = '<option value="">Tous les clients</option>' + clients.map(c => `<option value="${c}">${c}</option>`).join('');
+  selM.innerHTML = '<option value="">Tous les mois</option>' + periods.map(p => `<option value="${p}">${p}</option>`).join('');
+
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  filterDashboard();
+  showLoader(false);
+}
+
+function filterDashboard() {
+  const client = document.getElementById('sel-client').value;
+  const month = document.getElementById('sel-month').value;
+  const datasets = allData.filter(d => (!client || d.client === client) && (!month || d.period === month));
+  filteredRows = datasets.flatMap(d => d.billing.map(r => ({ ...r, client: d.client, period: d.period }))).sort((a,b) => a.dateSerial - b.dateSerial);
+  const metrics = datasets.reduce((acc, d) => ({
+    rns: (acc.rns||0) + (d.metrics.rns||0),
+    maxRns: (acc.maxRns||0) + (d.metrics.maxRns||0),
+    totalElec: (acc.totalElec||0) + (d.metrics.totalElec||0),
+  }), {});
+  updateKPIs(filteredRows, metrics, datasets);
+  updateCharts(filteredRows, datasets);
+  updateTable(filteredRows);
+}
+
+function updateKPIs(rows, metrics, datasets) {
+  const totalCooling = rows.reduce((s,r) => s+r.cooling, 0);
+  const totalPower   = rows.reduce((s,r) => s+r.totalPlant, 0);
+  const avgEff = rows.length ? rows.reduce((s,r) => s+r.eff, 0) / rows.length : 0;
+  document.getElementById('kpi-cooling').textContent = fmtBig(totalCooling);
+  document.getElementById('kpi-power').textContent   = fmtBig(totalPower);
+  document.getElementById('kpi-eff').textContent     = avgEff.toFixed(3);
+  document.getElementById('kpi-days').textContent    = rows.length;
+  document.getElementById('kpi-rns').textContent     = fmtNum(metrics.rns);
+  document.getElementById('kpi-rns-max').textContent = fmtNum(metrics.maxRns);
+  document.getElementById('kpi-elec').textContent    = fmtBig(metrics.totalElec);
+  const clientNames = [...new Set(datasets.map(d => d.client))].join(', ');
+  const perds = [...new Set(datasets.map(d => d.period).filter(p=>p!=='—'))].join(', ');
+  document.getElementById('dash-title').textContent  = clientNames || 'Dashboard CPPR';
+  document.getElementById('dash-period').textContent = perds ? '📅 ' + perds : '';
+}
+
+// ── CHARTS ─────────────────────────────────────
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function updateCharts(rows, datasets) {
+  const labels = rows.map(r => fmtDateShort(r.dateSerial));
+  const clients = [...new Set(rows.map(r => r.client))];
+  const multiClient = clients.length > 1;
+
+  // Chart 1: Cooling + Power — one dataset per client if multi
+  destroyChart('load');
+  const ctx1 = document.getElementById('chart-load').getContext('2d');
+  let loadDatasets;
+  if (multiClient) {
+    loadDatasets = clients.flatMap(c => {
+      const color = clientColor(c);
+      const clientRows = rows.filter(r => r.client === c);
+      return [
+        { label: c + ' – Cooling (TRh)', data: rows.map(r => r.client===c ? +r.cooling.toFixed(1) : null), backgroundColor: color+'99', borderRadius:2, yAxisID:'y', type:'bar', spanGaps:false },
+        { label: c + ' – Power (kWh)', data: rows.map(r => r.client===c ? +r.totalPlant.toFixed(1) : null), borderColor: color, backgroundColor: color+'22', pointRadius:1, borderWidth:2, fill:false, tension:.3, yAxisID:'y2', type:'line', spanGaps:false },
+      ];
+    });
+  } else {
+    loadDatasets = [
+      { label:'Cooling Load (TRh)', data:rows.map(r=>+r.cooling.toFixed(1)), backgroundColor:'rgba(59,130,246,.7)', borderRadius:3, yAxisID:'y' },
+      { label:'Total Plant Power (kWh)', data:rows.map(r=>+r.totalPlant.toFixed(1)), type:'line', borderColor:'#06b6d4', backgroundColor:'rgba(6,182,212,.1)', pointRadius:2, borderWidth:2, fill:true, tension:.3, yAxisID:'y2' }
+    ];
+  }
+  charts['load'] = new Chart(ctx1, {
+    type:'bar', data:{ labels, datasets: loadDatasets },
+    options: chartOpts({ y:'TRh', y2:'kWh', y2right:true })
+  });
+
+  // Chart 2: Efficiency
+  destroyChart('eff');
+  const ctx2 = document.getElementById('chart-eff').getContext('2d');
+  const effDatasets = multiClient
+    ? clients.map(c => ({ label: c, data: rows.map(r => r.client===c ? +r.eff.toFixed(4) : null), borderColor: clientColor(c), backgroundColor: clientColor(c)+'22', pointRadius:1, borderWidth:2, fill:false, tension:.3, spanGaps:false }))
+    : [{ label:'Eff (kW/TR)', data:rows.map(r=>+r.eff.toFixed(4)), borderColor:'#8b5cf6', backgroundColor:'rgba(139,92,246,.1)', pointRadius:2, borderWidth:2, fill:true, tension:.3 }];
+  charts['eff'] = new Chart(ctx2, {
+    type:'line', data:{ labels, datasets: effDatasets },
+    options: chartOpts({ y:'kW/TR' })
+  });
+
+  // Chart 3: Breakdown (doughnut)
+  destroyChart('breakdown');
+  const ctx3 = document.getElementById('chart-breakdown').getContext('2d');
+  const sum = k => rows.reduce((s,r) => s + (r[k]||0), 0);
+  charts['breakdown'] = new Chart(ctx3, {
+    type:'doughnut',
+    data:{
+      labels:['Chiller','CHWP','CWP','CT','Auxiliaires'],
+      datasets:[{ data:[sum('chiller'),sum('chwp'),sum('cwp'),sum('ct'),sum('aux')].map(v=>+v.toFixed(0)), backgroundColor:['#3b82f6','#06b6d4','#8b5cf6','#10b981','#f59e0b'], borderWidth:0 }]
+    },
+    options:{
+      plugins:{
+        legend:{ position:'right', labels:{ color:'#94a3b8', font:{size:11}, padding:12 } },
+        tooltip:{ callbacks:{ label: ctx => ctx.label + ': ' + fmtNum(ctx.raw) + ' kWh' } }
+      },
+      cutout:'65%',
+    }
+  });
+}
+
+function chartOpts({ y='', y2='', y2right=false }={}) {
+  const base = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:'#94a3b8', font:{size:11} } }, tooltip:{ mode:'index', intersect:false } },
+    scales:{
+      x:{ ticks:{ color:'#64748b', font:{size:10}, maxTicksLimit:15 }, grid:{ color:'rgba(42,48,80,.5)' } },
+      y:{ title:{ display:!!y, text:y, color:'#64748b', font:{size:10} }, ticks:{ color:'#64748b', font:{size:10} }, grid:{ color:'rgba(42,48,80,.5)' } }
+    }
+  };
+  if (y2right) {
+    base.scales.y2 = { position:'right', title:{ display:!!y2, text:y2, color:'#64748b', font:{size:10} }, ticks:{ color:'#64748b', font:{size:10} }, grid:{ drawOnChartArea:false } };
+  }
+  return base;
+}
+
+// ── TABLE ───────────────────────────────────────
+function updateTable(rows) {
+  document.getElementById('table-count').textContent = rows.length + ' lignes';
+  const tbody = document.getElementById('table-body');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="10" class="empty">Aucune donnée</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => {
+    const effClass = r.eff < 0.8 ? 'eff-good' : r.eff < 1.0 ? 'eff-mid' : 'eff-bad';
+    const dot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${clientColor(r.client)};margin-right:5px"></span>`;
+    return `<tr>
+      <td>${fmtDate(r.dateSerial)}</td>
+      <td>${dot}${r.client}</td>
+      <td>${fmtNum(r.cooling,1)}</td><td>${fmtNum(r.chiller,1)}</td>
+      <td>${fmtNum(r.chwp,1)}</td><td>${fmtNum(r.cwp,1)}</td>
+      <td>${fmtNum(r.ct,1)}</td><td>${fmtNum(r.aux,1)}</td>
+      <td>${fmtNum(r.totalPlant,1)}</td>
+      <td class="${effClass}">${r.eff.toFixed(4)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── UTILS ───────────────────────────────────────
+function showLoader(v, txt='') { document.getElementById('loader').className = v ? 'show' : ''; if (txt) document.getElementById('loader-text').textContent = txt; }
+function setProgress(pct, txt) { document.getElementById('progress-fill').style.width = pct + '%'; if (txt) document.getElementById('loader-text').textContent = txt; }
+function resetDashboard() {
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('drop-zone').style.display = 'flex';
+  document.getElementById('file-list').innerHTML = '';
+  document.getElementById('scan-status').style.display = 'none';
+  document.getElementById('load-btn').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  document.getElementById('folder-input').value = '';
+  pendingFiles.length = 0; allData = [];
+}
+</script>
+</body>
+</html>
