@@ -675,7 +675,7 @@ async function parseFile(file,client){
     const r=new FileReader();
     r.onload=e=>{
       try{
-        const wb=XLSX.read(e.target.result,{type:'binary',cellDates:false});
+        const wb=XLSX.read(e.target.result,{type:'binary',cellDates:false,sheets:['Billing Data','Site Metrics','Weekly Breakdown Data ','Weekly Breakdown Data','Chiller Plant','CH 1','CH 2','CH 3','CHWP','CWP','CT','Part-Load Efficiency Reference','Comment']});
 
         // Billing Data
         const bdS=wb.Sheets['Billing Data']||wb.Sheets[wb.SheetNames[0]];
