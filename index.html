@@ -343,7 +343,7 @@ tr:hover td{background:rgba(59,130,246,.04)}
         <option value="">Tous les chillers</option>
       </select>
     </div>
-    <div class="chart-grid grid-2" style="margin-bottom:16px">
+    <div class="chart-grid grid-2" id="main-ch-grid" style="margin-bottom:16px">
       <div id="chillers-container"></div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card">
@@ -1317,9 +1317,22 @@ function renderMainCH(){
   }
 
   if(!allChillerNames.length) return;
-  container.innerHTML=`<div class="chart-grid grid-2">${visibleChillers.map(cn=>{
+  // Resize grid: single CH selected → full width for Part Load chart
+  const grid=document.getElementById('main-ch-grid');
+  if(grid){
+    if(selectedCH){
+      grid.style.gridTemplateColumns='1fr 1fr'; // bigger left, right still visible
+      container.style.gridColumn='1';
+    } else {
+      grid.style.gridTemplateColumns='1fr 1fr';
+      container.style.gridColumn='';
+    }
+  }
+
+  const chartH=selectedCH?'chart-h300':'chart-h260';
+  container.innerHTML=`<div class="${selectedCH?'':'chart-grid grid-2'}" style="${selectedCH?'':''}"> ${visibleChillers.map(cn=>{
     const id='chart-ch-'+cn.replace(/\s/g,'-');
-    return `<div class="card"><div class="card-head"><div class="card-title">${cn} VS Specification</div><div class="card-sub">Part Load — Current + Last Month + Last 2 Month</div></div><div class="card-body"><div class="chart-h260"><canvas id="${id}"></canvas></div></div></div>`;
+    return `<div class="card"><div class="card-head"><div class="card-title">${cn} VS Specification</div><div class="card-sub">Part Load — Current + Last Month + Last 2 Month</div></div><div class="card-body"><div class="${chartH}"><canvas id="${id}"></canvas></div></div></div>`;
   }).join('')}</div>`;
   visibleChillers.forEach(cn=>{
     const id='chart-ch-'+cn.replace(/\s/g,'-');
