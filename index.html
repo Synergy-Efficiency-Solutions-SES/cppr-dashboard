@@ -1427,10 +1427,11 @@ function renderCT(){
   if(weekly.length){
     charts['ct-approach']=new Chart(document.getElementById('chart-ct-approach').getContext('2d'),{
       type:'bar',data:{labels:xlabels,datasets:[
-        {label:'CT Approach (°C)',data:weekly.map(w=>+(w.ct1Approach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.5)',borderRadius:3},
-        {label:'Wet Bulb (°C)',data:weekly.map(w=>+(w.wetBulb||0).toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:3,borderWidth:2,fill:false},
-        {label:'Outside Air (°C)',data:weekly.map(w=>+(w.outsideAir||0).toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false},
-      ]},options:chartOpts({y:'°C'})
+        {label:'CT Approach (°C)',data:weekly.map(w=>+(w.ct1Approach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.5)',borderRadius:3,yAxisID:'y'},
+        {label:'Wet Bulb (°C)',data:weekly.map(w=>+(w.wetBulb||0).toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Outside Air (°C)',data:weekly.map(w=>+(w.outsideAir||0).toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'SUM WB & Approach',data:weekly.map(w=>+((w.wetBulb||0)+(w.ct1Approach||0)).toFixed(2)),type:'line',borderColor:'#8b5cf6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+      ]},options:chartOpts({y:'CT Approach (°C)',y2:'Temperature (°C)',y2right:true})
     });
   }
   destroyChart('ct-tds');
@@ -1565,8 +1566,14 @@ function renderWeeklyTrend(){
     ['wt-cond',{type:'bar',datasets:mkDatasets('condApproach','bar',['rgba(245,158,11,.6)','rgba(239,68,68,.6)'],'y'),opts:chartOpts({y:'°C'})}],
     ['wt-ct',{type:'bar',datasets:[
       ...mkDatasets('ct1Approach','bar',['rgba(245,158,11,.5)'],'y'),
-      ...mkDatasets('wetBulb','line',['#06b6d4'],'y'),
-    ],opts:chartOpts({y:'°C'})}],
+      ...mkDatasets('wetBulb','line',['#06b6d4'],'y2'),
+      ...mkDatasets('outsideAir','line',['#10b981'],'y2'),
+      ...clientsData.map((cd,i)=>({
+        label:multi?`SUM WB & Approach — ${cd.client}`:'SUM WB & Approach',
+        data:cd.weekly.map(w=>+((w.wetBulb||0)+(w.ct1Approach||0)).toFixed(2)),
+        type:'line',borderColor:'#8b5cf6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'
+      })),
+    ],opts:chartOpts({y:'CT Approach (°C)',y2:'Temperature (°C)',y2right:true})}],
     ['wt-tds',{type:'line',datasets:[
       ...mkDatasets('tds','line',GREENS,'y'),
       ...mkDatasets('ph','line',['#3b82f6','#8b5cf6'],'y2'),
