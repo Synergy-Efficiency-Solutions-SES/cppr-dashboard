@@ -711,9 +711,9 @@ function renderMonthly(){
 // YEARLY PAGE
 // ═══════════════════════════════════════════════════
 function renderYearly(){
-  // Group by period
+  // Group by period — use filteredData to respect filters
   const byPeriod={};
-  for(const d of allData){
+  for(const d of filteredData){
     if(!byPeriod[d.period])byPeriod[d.period]={period:d.period,billing:[],metrics:{}};
     byPeriod[d.period].billing.push(...d.billing);
     const m=d.metrics;
