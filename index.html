@@ -804,39 +804,46 @@ function renderYearly(){
 function renderDetailed(){
   const rows=filteredData.flatMap(d=>d.billing).sort((a,b)=>a.dateSerial-b.dateSerial);
 
-  // Efficiency compare: last month vs this month (if 2 periods)
-  const periods=[...new Set(filteredData.map(d=>d.period))].sort();
-  destroyChart('eff-compare');
-  if(periods.length>=2){
-    const p1=filteredData.filter(d=>d.period===periods[periods.length-2]);
-    const p2=filteredData.filter(d=>d.period===periods[periods.length-1]);
-    const avgComp=(arr,key)=>{const b=arr.flatMap(d=>d.billing);return b.length?b.reduce((s,r)=>s+r[key],0)/b.length:0};
-    const avgChiller=(arr)=>{const b=arr.flatMap(d=>d.billing);return b.length?b.reduce((s,r)=>s+r.chiller/Math.max(r.cooling,1),0)/b.length:0};
-    const categories=['Chiller','CHWP','CWP','CT','Aux'];
-    const keys=['chiller','chwp','cwp','ct','aux'];
-    const v1=keys.map(k=>+(avgComp(p1,k)/Math.max(avgComp(p1,'cooling'),1)).toFixed(4));
-    const v2=keys.map(k=>+(avgComp(p2,k)/Math.max(avgComp(p2,'cooling'),1)).toFixed(4));
-    charts['eff-compare']=new Chart(document.getElementById('chart-eff-compare').getContext('2d'),{
-      type:'bar',
-      data:{
-        labels:categories,
-        datasets:[
-          {label:periodLabel(periods[periods.length-2])||'Mois précédent',data:v1,backgroundColor:'rgba(100,116,139,.5)',borderRadius:4},
-          {label:periodLabel(periods[periods.length-1])||'Ce mois',data:v2,backgroundColor:'rgba(59,130,246,.7)',borderRadius:4},
-        ]
-      },
-      options:{...chartOpts({y:'kW/TR'}),indexAxis:'y'}
-    });
-  }else if(rows.length>0){
-    // Single period: just show breakdown
-    const b=filteredData.flatMap(d=>d.billing);
+  // Efficiency compare: always use last 2 periods from allData for the selected client
+  // Ignore month filter — always show "this month vs last month"
+  const client=document.getElementById('sel-client').value;
+  const year=document.getElementById('sel-year').value;
+  const month=document.getElementById('sel-month').value;
+
+  // Get all periods available (with client+year filter but ignore month)
+  const baseData=allData.filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year)));
+  const allPeriods=[...new Set(baseData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
+
+  // Determine "this month" and "last month"
+  let thisPeriod, lastPeriod;
+  if(month){
+    // Month explicitly selected → this = selected, last = previous in allPeriods
+    thisPeriod=month;
+    const idx=allPeriods.indexOf(month);
+    lastPeriod=idx>0?allPeriods[idx-1]:null;
+  } else {
+    // No month selected → use last 2 available
+    thisPeriod=allPeriods[allPeriods.length-1];
+    lastPeriod=allPeriods[allPeriods.length-2];
+  }
+
+  const p2data=baseData.filter(d=>d.period===thisPeriod);
+  const p1data=lastPeriod?baseData.filter(d=>d.period===lastPeriod):[];
+
+  const effBreakdown=(arr)=>{
+    const b=arr.flatMap(d=>d.billing);
     const cool=Math.max(b.reduce((s,r)=>s+r.cooling,0),1);
+    return ['chiller','chwp','cwp','ct','aux'].map(k=>+(b.reduce((s,r)=>s+r[k],0)/cool).toFixed(4));
+  };
+
+  destroyChart('eff-compare');
+  const datasets=[];
+  if(p1data.length) datasets.push({label:periodLabel(lastPeriod)||lastPeriod,data:effBreakdown(p1data),backgroundColor:'rgba(100,116,139,.5)',borderRadius:4});
+  if(p2data.length) datasets.push({label:periodLabel(thisPeriod)||thisPeriod,data:effBreakdown(p2data),backgroundColor:'rgba(59,130,246,.7)',borderRadius:4});
+  if(datasets.length){
     charts['eff-compare']=new Chart(document.getElementById('chart-eff-compare').getContext('2d'),{
       type:'bar',
-      data:{
-        labels:['Chiller','CHWP','CWP','CT','Aux'],
-        datasets:[{label:'kW/TR',data:['chiller','chwp','cwp','ct','aux'].map(k=>+(b.reduce((s,r)=>s+r[k],0)/cool).toFixed(4)),backgroundColor:['#1e3a6e','#3b82f6','#06b6d4','#10b981','#f59e0b'],borderRadius:4}]
-      },
+      data:{labels:['Chiller','CHWP','CWP','CT','Aux'],datasets},
       options:{...chartOpts({y:'kW/TR'}),indexAxis:'y'}
     });
   }
