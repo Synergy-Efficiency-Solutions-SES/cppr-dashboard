@@ -885,7 +885,7 @@ function renderDetailed(){
     const colors=['#1e3a6e','#3b82f6','#06b6d4','#10b981','#f59e0b'];
     kpiEl.innerHTML=keys.map((k,i)=>{
       const diff=v2full[i]-v1full[i];
-      const pct=v2full[i]>0?(diff/v2full[i]*100):0; // divide by THIS month
+      const pct=v1full[i]>0?(diff/v1full[i]*100):0; // divide by LAST month (per component)
       const sign=diff>=0?'+':'';
       return `<div style="background:${colors[i]};border-radius:8px;padding:10px 8px;text-align:center">
         <div style="font-size:10px;font-weight:700;color:#fff;text-transform:uppercase">${keyLabels[i]}<br>kW/TR</div>
