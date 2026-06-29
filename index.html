@@ -875,12 +875,19 @@ function renderMonthly(){
     <div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">${fmt4(avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
   `;
 
-  document.getElementById('kpi-hotel').innerHTML=`
-    <div class="kpi"><div class="kpi-label">Room Nights Sold</div><div class="kpi-value">${fmtNum(metrics.rns)}</div><div class="kpi-unit">RNS / Max ${fmtNum(metrics.maxRns)}</div></div>
-    <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmt4(metrics.totalElec)}</div><div class="kpi-unit">kWh</div></div>
-    <div class="kpi"><div class="kpi-label">Cooling / Room</div><div class="kpi-value">${fmt4(coolingPerRoom)}</div><div class="kpi-unit">TRh/RNS</div></div>
-    <div class="kpi"><div class="kpi-label">Energy / Room</div><div class="kpi-value">${fmt4(energyPerRoom)}</div><div class="kpi-unit">kWh/RNS</div></div>
-  `;
+  const hotelEl=document.getElementById('kpi-hotel');
+  if(metrics.rns>0){
+    hotelEl.style.display='grid';
+    hotelEl.innerHTML=`
+      <div class="kpi"><div class="kpi-label">Room Nights Sold</div><div class="kpi-value">${fmtNum(metrics.rns)}</div><div class="kpi-unit">RNS / Max ${fmtNum(metrics.maxRns)}</div></div>
+      <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmt4(metrics.totalElec)}</div><div class="kpi-unit">kWh</div></div>
+      <div class="kpi"><div class="kpi-label">Cooling / Room</div><div class="kpi-value">${fmt4(coolingPerRoom)}</div><div class="kpi-unit">TRh/RNS</div></div>
+      <div class="kpi"><div class="kpi-label">Energy / Room</div><div class="kpi-value">${fmt4(energyPerRoom)}</div><div class="kpi-unit">kWh/RNS</div></div>
+    `;
+  } else {
+    hotelEl.style.display='none';
+    hotelEl.innerHTML='';
+  }
 
   // ASHRAE gauge (0.5=excellent, 0.7=good, 0.9=fair, 1.2=need improvement)
   const eff=avgEff;
@@ -1024,17 +1031,22 @@ function renderYearly(){
 
   // Per room
   destroyChart('yearly-room');
-  charts['yearly-room']=new Chart(document.getElementById('chart-yearly-room').getContext('2d'),{
-    type:'line',
-    data:{
-      labels,
-      datasets:[
-        {label:'Cooling/Room (TRh/RNS)',data:periods.map(p=>p.metrics.rns>0?+(p.billing.reduce((s,r)=>s+r.cooling,0)/p.metrics.rns).toFixed(2):0),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
-        {label:'Energy/Room (kWh/RNS)',data:periods.map(p=>p.metrics.rns>0?+((p.metrics.totalElec||0)/p.metrics.rns).toFixed(2):0),borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-      ]
-    },
-    options:chartOpts({y:'TRh/RNS',y2:'kWh/RNS',y2right:true})
-  });
+  const hasRns=periods.some(p=>p.metrics.rns>0);
+  const roomCardEl=document.getElementById('chart-yearly-room')?.closest('.card');
+  if(roomCardEl) roomCardEl.style.display=hasRns?'block':'none';
+  if(hasRns){
+    charts['yearly-room']=new Chart(document.getElementById('chart-yearly-room').getContext('2d'),{
+      type:'line',
+      data:{
+        labels,
+        datasets:[
+          {label:'Cooling/Room (TRh/RNS)',data:periods.map(p=>p.metrics.rns>0?+(p.billing.reduce((s,r)=>s+r.cooling,0)/p.metrics.rns).toFixed(2):0),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
+          {label:'Energy/Room (kWh/RNS)',data:periods.map(p=>p.metrics.rns>0?+((p.metrics.totalElec||0)/p.metrics.rns).toFixed(2):0),borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        ]
+      },
+      options:chartOpts({y:'TRh/RNS',y2:'kWh/RNS',y2right:true})
+    });
+  }
 
   // Comments
   const comments=filteredData.flatMap(d=>d.comments);
