@@ -862,6 +862,15 @@ function renderDetailed(){
     options:chartOpts({y:'kW/TR'})
   });
 
+  // ── Efficiency shift KPIs + waterfall ──────────────────────
+  const keys=['chiller','chwp','cwp','ct','aux'];
+  const keyLabels=['Chiller','CHWP','CWP','CT','Aux'];
+  const effBreakdownTotal=(arr)=>{
+    const b=arr.flatMap(d=>d.billing);
+    const cool=Math.max(b.reduce((s,r)=>s+r.cooling,0),1);
+    return keys.map(k=>b.reduce((s,r)=>s+r[k],0)/cool);
+  };
+
   // Helper: get data for a specific period from allData (ignoring month filter)
   const getForPeriod=(period,key)=>allData.filter(d=>(!client||d.client===client)&&d.period===period).flatMap(d=>d[key]);
 
@@ -871,6 +880,60 @@ function renderDetailed(){
   const thisPer=allPeriodsBase[thisIdx];
   const lastPer=allPeriodsBase[thisIdx-1]||null;
   const last2Per=allPeriodsBase[thisIdx-2]||null;
+
+  // KPI badges + waterfall
+  const v1full=p1data.length?effBreakdownTotal(p1data):null;
+  const v2full=p2data.length?effBreakdownTotal(p2data):null;
+  const kpiEl=document.getElementById('eff-shift-kpis');
+  if(kpiEl&&v1full&&v2full){
+    const totalV1=v1full.reduce((s,v)=>s+v,0);
+    const totalV2=v2full.reduce((s,v)=>s+v,0);
+    const totalDiff=totalV2-totalV1;
+    const totalPct=totalV1>0?(totalDiff/totalV1*100):0;
+    const colors=['#1e3a6e','#3b82f6','#06b6d4','#10b981','#f59e0b'];
+    kpiEl.innerHTML=keys.map((k,i)=>{
+      const diff=v2full[i]-v1full[i];
+      const pct=v1full[i]>0?(diff/v1full[i]*100):0;
+      const sign=diff>=0?'+':'';
+      const col=diff<=0?'var(--good)':'var(--bad)';
+      return `<div style="background:${colors[i]};border-radius:8px;padding:10px 8px;text-align:center">
+        <div style="font-size:10px;font-weight:700;color:#fff;text-transform:uppercase">${keyLabels[i]}<br>kW/TR</div>
+        <div style="font-size:13px;font-weight:800;color:#fff;margin-top:4px">${sign}${pct.toFixed(2)}%</div>
+      </div>`;
+    }).join('')+`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Total<br>kW/TR</div>
+      <div style="font-size:13px;font-weight:800;color:${totalDiff>=0?'var(--bad)':'var(--good)'};margin-top:4px">${totalDiff>=0?'+':''}${totalPct.toFixed(2)}%</div>
+    </div>`;
+
+    // Waterfall chart
+    destroyChart('eff-shift');
+    const shifts=keys.map((k,i)=>v2full[i]-v1full[i]);
+    const totalShift=shifts.reduce((s,v)=>s+v,0);
+    const shiftPcts=v1full[0]>0?keys.map((k,i)=>{
+      // % contribution of each component to total shift
+      return totalShift!==0?+((shifts[i]/Math.abs(totalShift))*100).toFixed(2):0;
+    }):keys.map(()=>0);
+    charts['eff-shift']=new Chart(document.getElementById('chart-eff-shift').getContext('2d'),{
+      type:'bar',
+      data:{
+        labels:keyLabels,
+        datasets:[{
+          label:'% share of efficiency shift',
+          data:shiftPcts,
+          backgroundColor:shiftPcts.map(v=>v>=0?'rgba(59,130,246,.7)':'rgba(16,185,129,.7)'),
+          borderRadius:4,
+        }]
+      },
+      options:{
+        ...chartOpts({y:'%'}),
+        indexAxis:'y',
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:c=>`${c.raw>=0?'+':''}${c.raw}%`}}
+        }
+      }
+    });
+  } else if(kpiEl) kpiEl.innerHTML='';
 
   // Part-load Chiller Plant
   const pl=getForPeriod(thisPer,'partloadPlant');
