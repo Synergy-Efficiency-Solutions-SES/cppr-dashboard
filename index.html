@@ -472,7 +472,8 @@ async function parseFile(file,client){
           const row=bd[i];
           const serial=typeof row[0]==='number'?row[0]:null;
           if(!serial||serial<40000)continue;
-          billing.push({dateSerial:serial,cooling:+row[1]||0,chiller:+row[2]||0,chwp:+row[3]||0,cwp:+row[4]||0,ct:+row[5]||0,aux:+row[6]||0,totalPlant:+row[7]||0,eff:+row[8]||0});
+          const _cool=+row[1]||0;const _plant=+row[7]||0;
+          billing.push({dateSerial:serial,cooling:_cool,chiller:+row[2]||0,chwp:+row[3]||0,cwp:+row[4]||0,ct:+row[5]||0,aux:+row[6]||0,totalPlant:_plant,chillerEff:+row[8]||0,plantEff:_cool>0?_plant/_cool:0});
         }
 
         // Period from first billing row
@@ -577,7 +578,7 @@ function renderMonthly(){
   const metrics=sumMetrics(filteredData);
   const totalCooling=rows.reduce((s,r)=>s+r.cooling,0);
   const totalPlant=rows.reduce((s,r)=>s+r.totalPlant,0);
-  const avgEff=rows.length?rows.reduce((s,r)=>s+r.eff,0)/rows.length:0;
+  const avgEff=rows.length?rows.reduce((s,r)=>s+r.plantEff,0)/rows.length:0;
 
   // Electricity savings = (oldEff - currentEff) * cooling
   const elecSavings=Math.max(0,(metrics.oldEff-avgEff)*totalCooling);
@@ -694,7 +695,7 @@ function renderYearly(){
   const totPlant=periods.flatMap(p=>p.billing).reduce((s,r)=>s+r.totalPlant,0);
   const totRns=periods.reduce((s,p)=>s+(p.metrics.rns||0),0);
   const totElec=periods.reduce((s,p)=>s+(p.metrics.totalElec||0),0);
-  const avgEff=periods.flatMap(p=>p.billing).length?periods.flatMap(p=>p.billing).reduce((s,r)=>s+r.eff,0)/periods.flatMap(p=>p.billing).length:0;
+  const avgEff=periods.flatMap(p=>p.billing).length?periods.flatMap(p=>p.billing).reduce((s,r)=>s+r.plantEff,0)/periods.flatMap(p=>p.billing).length:0;
   const oldEff=periods[0]?.metrics.oldEff||1.69;
   const avgSavingsPct=oldEff>0?Math.round((1-avgEff/oldEff)*100):0;
   const totElecSavings=Math.max(0,(oldEff-avgEff)*totCooling);
@@ -733,8 +734,8 @@ function renderYearly(){
       labels,
       datasets:[
         {label:'Cooling Load (TRh)',data:periods.map(p=>+p.billing.reduce((s,r)=>s+r.cooling,0).toFixed(0)),backgroundColor:'rgba(59,130,246,.5)',borderRadius:3,yAxisID:'y'},
-        {label:'Plant Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;return b.length?+(b.reduce((s,r)=>s+r.eff,0)/b.length).toFixed(4):0}),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-        {label:'Chiller Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;return b.length?+(b.reduce((s,r)=>s+r.chiller/Math.max(r.cooling,1),0)/b.length).toFixed(4):0}),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Plant Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;return b.length?+(b.reduce((s,r)=>s+r.plantEff,0)/b.length).toFixed(4):0}),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Chiller Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;return b.length?+(b.reduce((s,r)=>s+r.chillerEff,0)/b.length).toFixed(4):0}),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
       ]
     },
     options:chartOpts({y:'TRh',y2:'kW/TR',y2right:true})
@@ -811,8 +812,8 @@ function renderDetailed(){
     data:{
       labels:rows.map(r=>fmtShort(r.dateSerial)),
       datasets:[
-        {label:'Eff (kW/TR)',data:rows.map(r=>+r.eff.toFixed(4)),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.08)',pointRadius:2,borderWidth:2,fill:true,tension:.3},
-        {label:'Moyenne',data:rows.map(()=>rows.length?+(rows.reduce((s,r)=>s+r.eff,0)/rows.length).toFixed(4):0),borderColor:'rgba(255,255,255,.2)',borderDash:[4,4],pointRadius:0,borderWidth:1},
+        {label:'Eff (kW/TR)',data:rows.map(r=>+r.plantEff.toFixed(4)),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.08)',pointRadius:2,borderWidth:2,fill:true,tension:.3},
+        {label:'Moyenne',data:rows.map(()=>rows.length?+(rows.reduce((s,r)=>s+r.plantEff,0)/rows.length).toFixed(4):0),borderColor:'rgba(255,255,255,.2)',borderDash:[4,4],pointRadius:0,borderWidth:1},
       ]
     },
     options:chartOpts({y:'kW/TR'})
@@ -866,9 +867,9 @@ function renderRaw(){
   const tb=document.getElementById('table-body');
   if(!rows.length){tb.innerHTML='<tr><td colspan="11" class="empty">Aucune donnée</td></tr>';return}
   tb.innerHTML=rows.map(r=>{
-    const ec=r.eff<0.8?'eff-good':r.eff<1.0?'eff-mid':'eff-bad';
+    const ec=r.plantEff<0.8?'eff-good':r.plantEff<1.0?'eff-mid':'eff-bad';
     const dot=`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${clientColor(r.client)};margin-right:4px"></span>`;
-    return`<tr><td>${fmtDate(r.dateSerial)}</td><td>${dot}${r.client}</td><td>${periodLabel(r.period)||r.period}</td><td>${fmtNum(r.cooling,1)}</td><td>${fmtNum(r.chiller,1)}</td><td>${fmtNum(r.chwp,1)}</td><td>${fmtNum(r.cwp,1)}</td><td>${fmtNum(r.ct,1)}</td><td>${fmtNum(r.aux,1)}</td><td>${fmtNum(r.totalPlant,1)}</td><td class="${ec}">${r.eff.toFixed(4)}</td></tr>`;
+    return`<tr><td>${fmtDate(r.dateSerial)}</td><td>${dot}${r.client}</td><td>${periodLabel(r.period)||r.period}</td><td>${fmtNum(r.cooling,1)}</td><td>${fmtNum(r.chiller,1)}</td><td>${fmtNum(r.chwp,1)}</td><td>${fmtNum(r.cwp,1)}</td><td>${fmtNum(r.ct,1)}</td><td>${fmtNum(r.aux,1)}</td><td>${fmtNum(r.totalPlant,1)}</td><td class="${ec}">${r.plantEff.toFixed(4)}</td></tr>`;
   }).join('');
 }
 
