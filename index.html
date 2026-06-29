@@ -1252,7 +1252,7 @@ function renderMainCH(){
   
   // Approach & Flow charts from weekly data
   const weekly=getWeeklyForFilter();
-  const xlabels=weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week);
+  const xlabels=weekly.map(w=>w.yearWeek||w.week);
   destroyChart('ch-approach');
   if(weekly.length){
     charts['ch-approach']=new Chart(document.getElementById('chart-ch-approach').getContext('2d'),{
@@ -1329,7 +1329,7 @@ function renderCHWP(){
   if(weekly.length){
     charts['chwp-flow']=new Chart(document.getElementById('chart-chwp-flow').getContext('2d'),{
       type:'bar',
-      data:{labels:weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week),
+      data:{labels:weekly.map(w=>w.yearWeek||w.week),
         datasets:[{label:'CHW Flow (LPS)',data:weekly.map(w=>+w.chwFlow.toFixed(2)),backgroundColor:'rgba(6,182,212,.6)',borderRadius:3}]},
       options:{...chartOpts({y:'LPS'}),plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}},tooltip:{mode:'index',intersect:false}}}
     });
@@ -1339,7 +1339,7 @@ function renderCHWP(){
   if(weekly.length){
     charts['evap-approach']=new Chart(document.getElementById('chart-evap-approach').getContext('2d'),{
       type:'bar',
-      data:{labels:weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week),
+      data:{labels:weekly.map(w=>w.yearWeek||w.week),
         datasets:[{label:'Evaporator Approach (°C)',data:weekly.map(w=>+w.evapApproach.toFixed(2)),backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}]},
       options:chartOpts({y:'°C'})
     });
@@ -1349,7 +1349,7 @@ function renderCHWP(){
   if(weekly.length){
     charts['chwp-setpoint']=new Chart(document.getElementById('chart-chwp-setpoint').getContext('2d'),{
       type:'line',
-      data:{labels:weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week),
+      data:{labels:weekly.map(w=>w.yearWeek||w.week),
         datasets:[
           {label:'Set Point (°C)',data:weekly.map(w=>+w.setPoint.toFixed(2)),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
           {label:'Delta T (°C)',data:weekly.map(w=>+w.dT.toFixed(2)),borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
@@ -1380,7 +1380,7 @@ function renderCWP(){
   destroyChart('cwp-flow');
   if(weekly.length){
     charts['cwp-flow']=new Chart(document.getElementById('chart-cwp-flow').getContext('2d'),{
-      type:'bar',data:{labels:weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week),
+      type:'bar',data:{labels:weekly.map(w=>w.yearWeek||w.week),
         datasets:[{label:'CW Flow (LPS)',data:weekly.map(w=>+w.cwFlow.toFixed(2)),backgroundColor:'rgba(16,185,129,.6)',borderRadius:3}]},
       options:chartOpts({y:'LPS'})
     });
@@ -1388,7 +1388,7 @@ function renderCWP(){
   destroyChart('cond-approach');
   if(weekly.length){
     charts['cond-approach']=new Chart(document.getElementById('chart-cond-approach').getContext('2d'),{
-      type:'bar',data:{labels:weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week),
+      type:'bar',data:{labels:weekly.map(w=>w.yearWeek||w.week),
         datasets:[{label:'Condenser Approach (°C)',data:weekly.map(w=>+(w.condApproach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.6)',borderRadius:3}]},
       options:chartOpts({y:'°C'})
     });
@@ -1422,7 +1422,7 @@ function renderCT(){
     if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
     charts['ct-pl']=new Chart(document.getElementById('chart-ct-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
   }
-  const xlabels=weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week);
+  const xlabels=weekly.map(w=>w.yearWeek||w.week);
   destroyChart('ct-approach');
   if(weekly.length){
     charts['ct-approach']=new Chart(document.getElementById('chart-ct-approach').getContext('2d'),{
@@ -1466,35 +1466,110 @@ function renderComments(){
 }
 
 // ═══════════════════════════════════════════════════
+// WEEKLY MERGE HELPER
+// Groups weekly rows by yearWeek and merges split weeks correctly:
+// - SUM fields: coolingLoad, makeupWater, rns
+// - WEIGHTED AVG by coolingLoad: plantEff, chillerEff
+// - SIMPLE AVG: everything else (flow, approach, temp, pH, TDS, COC, setPoint, dT)
+// ═══════════════════════════════════════════════════
+function mergeWeeklyData(weekly){
+  const SUM_FIELDS    = ['coolingLoad','makeupWater'];
+  const WAVG_FIELDS   = ['plantEff','chillerEff'];   // weighted by coolingLoad
+  const AVG_FIELDS    = ['chwFlow','cwFlow','evapApproach','condApproach',
+                         'ct1Approach','ct1Freq','wetBulb','outsideAir',
+                         'setPoint','dT','ph','tds','coc'];
+
+  // Group by yearWeek (e.g. "Week 14")
+  const groups = {};
+  const order  = [];
+  for(const w of weekly){
+    const key = w.yearWeek || w.week;
+    if(!groups[key]){ groups[key]=[]; order.push(key); }
+    groups[key].push(w);
+  }
+
+  return order.map(key=>{
+    const rows = groups[key];
+    const merged = { yearWeek: key, week: rows[0].week, period: rows[0].period };
+
+    // SUM
+    for(const f of SUM_FIELDS)
+      merged[f] = rows.reduce((s,r)=>s+(+r[f]||0), 0);
+
+    // WEIGHTED AVG by coolingLoad
+    const totalLoad = merged.coolingLoad || 1;
+    for(const f of WAVG_FIELDS)
+      merged[f] = rows.reduce((s,r)=>s+(+r[f]||0)*(+r.coolingLoad||0), 0) / totalLoad;
+
+    // SIMPLE AVG
+    for(const f of AVG_FIELDS)
+      merged[f] = rows.reduce((s,r)=>s+(+r[f]||0), 0) / rows.length;
+
+    return merged;
+  });
+}
+
+// ═══════════════════════════════════════════════════
 // WEEKLY TREND PAGE
 // ═══════════════════════════════════════════════════
 function renderWeeklyTrend(){
-  const weekly=getWeeklyForFilter();
+  const client=document.getElementById('sel-client').value;
+  const year=document.getElementById('sel-year').value;
+
+  // Get clients and their weekly data separately
+  const clientsData=[];
+  const clientNames=[...new Set(filteredData.map(d=>d.client))].sort();
+  for(const cn of clientNames){
+    const w=filteredData
+      .filter(d=>d.client===cn&&(!year||d.period.startsWith(year)))
+      .slice().sort((a,b)=>a.period.localeCompare(b.period))
+      .flatMap(d=>d.weekly);
+    if(w.length) clientsData.push({client:cn,weekly:w,color:clientColor(cn)});
+  }
+
+  // Merge split weeks per client
+  for(const cd of clientsData) cd.weekly = mergeWeeklyData(cd.weekly);
+
+  // Use first client's labels as x-axis (year week)
+  const weekly=clientsData.length>0?clientsData[0].weekly:[];
   const labels=weekly.map(w=>w.yearWeek||w.week);
+
+  // Helper: build datasets for a field, one per client
+  const mkDatasets=(field,type,colors,yAxisID,extra={})=>clientsData.map((cd,i)=>({
+    label:`${cd.client}${clientsData.length>1?' – ':''}`,
+    data:cd.weekly.map(w=>typeof w[field]==='number'?+w[field].toFixed(4):0),
+    ...(type==='bar'?{backgroundColor:colors[i%colors.length]+'99',borderRadius:3}:{borderColor:colors[i%colors.length],pointRadius:3,borderWidth:2,fill:false}),
+    type,yAxisID:yAxisID||'y',...extra
+  }));
+
+  const BLUES=['rgba(59,130,246,.6)','rgba(139,92,246,.6)','rgba(6,182,212,.6)'];
+  const GREENS=['#10b981','#06b6d4','#8b5cf6'];
+  const ORANGES=['#f59e0b','#ef4444','#ec4899'];
+
   const wtCharts=[
     ['wt-load',{type:'bar',datasets:[
-      {label:'Cooling Load (TR)',data:weekly.map(w=>+w.coolingLoad.toFixed(1)),backgroundColor:'rgba(59,130,246,.6)',borderRadius:3,yAxisID:'y'},
-      {label:'Plant Eff (kW/TR)',data:weekly.map(w=>+w.plantEff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
-      {label:'Chiller Eff (kW/TR)',data:weekly.map(w=>+w.chillerEff.toFixed(4)),type:'line',borderColor:'#f59e0b',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+      ...mkDatasets('coolingLoad','bar',BLUES,'y'),
+      ...mkDatasets('plantEff','line',GREENS,'y2'),
+      ...mkDatasets('chillerEff','line',ORANGES,'y2'),
     ],opts:chartOpts({y:'TR',y2:'kW/TR',y2right:true})}],
     ['wt-setpoint',{type:'line',datasets:[
-      {label:'Set Point (°C)',data:weekly.map(w=>+w.setPoint.toFixed(2)),borderColor:'#3b82f6',pointRadius:3,borderWidth:2,fill:false},
-      {label:'Delta T (°C)',data:weekly.map(w=>+w.dT.toFixed(2)),borderColor:'#06b6d4',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+      ...mkDatasets('setPoint','line',['#3b82f6','#8b5cf6'],'y'),
+      ...mkDatasets('dT','line',['#06b6d4','#10b981'],'y2'),
     ],opts:chartOpts({y:'°C (SP)',y2:'°C (dT)',y2right:true})}],
-    ['wt-chwflow',{type:'bar',datasets:[{label:'CHW Flow (LPS)',data:weekly.map(w=>+w.chwFlow.toFixed(2)),backgroundColor:'rgba(6,182,212,.6)',borderRadius:3}],opts:chartOpts({y:'LPS'})}],
-    ['wt-cwflow',{type:'bar',datasets:[{label:'CW Flow (LPS)',data:weekly.map(w=>+w.cwFlow.toFixed(2)),backgroundColor:'rgba(16,185,129,.6)',borderRadius:3}],opts:chartOpts({y:'LPS'})}],
-    ['wt-evap',{type:'bar',datasets:[{label:'Evap Approach (°C)',data:weekly.map(w=>+(w.evapApproach||0).toFixed(2)),backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}],opts:chartOpts({y:'°C'})}],
-    ['wt-cond',{type:'bar',datasets:[{label:'Cond Approach (°C)',data:weekly.map(w=>+(w.condApproach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.6)',borderRadius:3}],opts:chartOpts({y:'°C'})}],
+    ['wt-chwflow',{type:'bar',datasets:mkDatasets('chwFlow','bar',BLUES,'y'),opts:chartOpts({y:'LPS'})}],
+    ['wt-cwflow',{type:'bar',datasets:mkDatasets('cwFlow','bar',GREENS,'y'),opts:chartOpts({y:'LPS'})}],
+    ['wt-evap',{type:'bar',datasets:mkDatasets('evapApproach','bar',['rgba(139,92,246,.6)','rgba(59,130,246,.6)'],'y'),opts:chartOpts({y:'°C'})}],
+    ['wt-cond',{type:'bar',datasets:mkDatasets('condApproach','bar',['rgba(245,158,11,.6)','rgba(239,68,68,.6)'],'y'),opts:chartOpts({y:'°C'})}],
     ['wt-ct',{type:'bar',datasets:[
-      {label:'CT Approach (°C)',data:weekly.map(w=>+(w.ct1Approach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.5)',borderRadius:3},
-      {label:'Wet Bulb (°C)',data:weekly.map(w=>+(w.wetBulb||0).toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:3,borderWidth:2,fill:false},
+      ...mkDatasets('ct1Approach','bar',['rgba(245,158,11,.5)'],'y'),
+      ...mkDatasets('wetBulb','line',['#06b6d4'],'y'),
     ],opts:chartOpts({y:'°C'})}],
     ['wt-tds',{type:'line',datasets:[
-      {label:'TDS',data:weekly.map(w=>+(w.tds||0).toFixed(0)),borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false},
-      {label:'pH',data:weekly.map(w=>+(w.ph||0).toFixed(2)),borderColor:'#3b82f6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+      ...mkDatasets('tds','line',GREENS,'y'),
+      ...mkDatasets('ph','line',['#3b82f6','#8b5cf6'],'y2'),
     ],opts:chartOpts({y:'TDS',y2:'pH',y2right:true})}],
-    ['wt-coc',{type:'bar',datasets:[{label:'COC',data:weekly.map(w=>+(w.coc||0).toFixed(2)),backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}],opts:chartOpts({y:'COC'})}],
-    ['wt-makeup',{type:'bar',datasets:[{label:'Makeup Water (m³)',data:weekly.map(w=>+(w.makeupWater||0).toFixed(2)),backgroundColor:'rgba(59,130,246,.5)',borderRadius:3}],opts:chartOpts({y:'m³'})}],
+    ['wt-coc',{type:'bar',datasets:mkDatasets('coc','bar',['rgba(139,92,246,.6)'],'y'),opts:chartOpts({y:'COC'})}],
+    ['wt-makeup',{type:'bar',datasets:mkDatasets('makeupWater','bar',['rgba(59,130,246,.5)'],'y'),opts:chartOpts({y:'m³'})}],
   ];
   wtCharts.forEach(([id,cfg])=>{
     destroyChart(id);
@@ -1629,10 +1704,11 @@ function getPeriodHelpers(){
 function getWeeklyForFilter(){
   const client=document.getElementById('sel-client').value;
   const year=document.getElementById('sel-year').value;
-  return filteredData
+  const raw=filteredData
     .filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year)))
     .slice().sort((a,b)=>a.period.localeCompare(b.period))
     .flatMap(d=>d.weekly);
+  return mergeWeeklyData(raw);
 }
 
 // ═══════════════════════════════════════════════════
