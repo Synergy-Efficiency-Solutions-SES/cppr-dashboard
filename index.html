@@ -744,7 +744,25 @@ async function parseFile(file,client){
         if(cS){const cm=XLSX.utils.sheet_to_json(cS,{header:1,defval:null,raw:true});
           for(let i=1;i<cm.length;i++){const row=cm[i];if(row[1])comments.push({text:row[1]})}}
 
-        res({client,period:per||'—',billing,metrics,weekly,partloadPlant,partloadCH1,partloadRef,comments});
+        // Dynamic chiller sheets: CH 1, CH 2, CH 3...
+        const chillerSheets={};
+        for(const sn of wb.SheetNames){
+          const m=sn.trim().match(/^CH\s+(\d+)$/i);
+          if(m){
+            const cs=wb.Sheets[sn];
+            const cd=XLSX.utils.sheet_to_json(cs,{header:1,defval:null,raw:true});
+            const rows=[];
+            for(let i=1;i<cd.length;i++){const r=cd[i];if(!r[0])continue;rows.push({partLoad:+r[0]||0,occurrence:+r[2]||0,eff:+r[6]||0});}
+            chillerSheets['CH '+m[1]]=rows;
+          }
+        }
+        // CHWP/CWP/CT part-load
+        const parsePartLoad=(sheetName)=>{const s=wb.Sheets[sheetName];if(!s)return[];const d=XLSX.utils.sheet_to_json(s,{header:1,defval:null,raw:true});return d.slice(1).filter(r=>r[0]).map(r=>({partLoad:+r[0]||0,occurrence:+r[2]||0,eff:+r[6]||0}));};
+        const partloadCHWP=parsePartLoad('CHWP');
+        const partloadCWP=parsePartLoad('CWP');
+        const partloadCT=parsePartLoad('CT');
+
+        res({client,period:per||'—',billing,metrics,weekly,partloadPlant,partloadCH1,partloadRef,comments,chillerSheets,partloadCHWP,partloadCWP,partloadCT});
       }catch(err){rej(err)}
     };
     r.onerror=rej;
