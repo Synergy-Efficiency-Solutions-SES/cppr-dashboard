@@ -347,11 +347,11 @@ tr:hover td{background:rgba(59,130,246,.04)}
       <div id="chillers-container"></div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card">
-          <div class="card-head"><div class="card-title">Evaporator and Condenser Approach — Weekly</div><div class="card-sub">Evaporator + Condenser Approach (°C) vs Occurrence</div></div>
+          <div class="card-head"><div class="card-title">Evaporator and Condenser Approach</div><div class="card-sub">Occurrence % + Approach (°C) vs Part Load</div></div>
           <div class="card-body"><div class="chart-h260"><canvas id="chart-ch-approach"></canvas></div></div>
         </div>
         <div class="card">
-          <div class="card-head"><div class="card-title">Evaporator and Condenser Flow — Weekly</div><div class="card-sub">CHW Flow + CW Flow (LPS) vs Occurrence</div></div>
+          <div class="card-head"><div class="card-title">Evaporator and Condenser Flow</div><div class="card-sub">Occurrence % + Flow (LPS) vs Part Load</div></div>
           <div class="card-body"><div class="chart-h260"><canvas id="chart-ch-flow"></canvas></div></div>
         </div>
       </div>
@@ -768,8 +768,26 @@ async function parseFile(file,client){
           if(m){
             const cs=wb.Sheets[sn];
             const cd=XLSX.utils.sheet_to_json(cs,{header:1,defval:null,raw:true});
+            if(cd.length<2)continue;
+            const hdr=cd[0];
+            // Detect column indices dynamically
+            const iEvapApp =hdr.findIndex(h=>h&&String(h).toLowerCase().includes('approach evap'));
+            const iCondApp =hdr.findIndex(h=>h&&String(h).toLowerCase().includes('approach cond'));
+            const iEvapFlow=hdr.findIndex(h=>h&&String(h).toLowerCase().includes('evaporator flow'));
+            const iCondFlow=hdr.findIndex(h=>h&&String(h).toLowerCase().includes('condenser flow'));
             const rows=[];
-            for(let i=1;i<cd.length;i++){const r=cd[i];if(!r[0])continue;rows.push({partLoad:+r[0]||0,occurrence:+r[2]||0,eff:+r[6]||0});}
+            for(let i=1;i<cd.length;i++){
+              const r=cd[i];if(!r[0])continue;
+              rows.push({
+                partLoad:   +r[0]||0,
+                occurrence: +r[2]||0,
+                eff:        +r[6]||0,
+                evapApproach: iEvapApp>=0  ? (+r[iEvapApp]||0)  : null,
+                condApproach: iCondApp>=0  ? (+r[iCondApp]||0)  : null,
+                evapFlow:     iEvapFlow>=0 ? (+r[iEvapFlow]||0) : null,
+                condFlow:     iCondFlow>=0 ? (+r[iCondFlow]||0) : null,
+              });
+            }
             chillerSheets['CH '+m[1]]=rows;
           }
         }
@@ -1250,32 +1268,52 @@ function renderMainCH(){
   allChillerNames.forEach(cn=>{const id='chart-ch-'+cn.replace(/\s/g,'-');destroyChart(id);});
   if(!allChillerNames.length){container.innerHTML='<div class="empty">Aucune feuille chiller trouvée (CH 1, CH 2...)</div>';}
   
-  // Approach & Flow charts from weekly data
-  const weekly=getWeeklyForFilter();
-  const xlabels=weekly.map(w=>w.yearWeek||w.week);
+  // Approach & Flow charts from CH part-load data
+  // Use selected chiller or first available
+  const chForApproach = selectedCH || allChillerNames[0];
+  const currApproach  = chForApproach ? thisData.flatMap(d=>(d.chillerSheets||{})[chForApproach]||[]) : [];
+  const lastApproach  = lastPer && chForApproach ? allData.filter(d=>(!client||d.client===client)&&d.period===lastPer).flatMap(d=>(d.chillerSheets||{})[chForApproach]||[]) : [];
+  const hasApproach   = currApproach.some(r=>r.evapApproach!==null);
+  const hasFlow       = currApproach.some(r=>r.evapFlow!==null);
+  const plLabels      = currApproach.map(r=>(r.partLoad*100).toFixed(0)+'%');
+  const totOcc        = currApproach.reduce((s,r)=>s+r.occurrence,0)||1;
+
   destroyChart('ch-approach');
-  if(weekly.length){
-    charts['ch-approach']=new Chart(document.getElementById('chart-ch-approach').getContext('2d'),{
-      type:'bar',
-      data:{labels:xlabels,datasets:[
-        {label:'Occurrence (%)',data:weekly.map((_,i)=>+(100/weekly.length).toFixed(1)),backgroundColor:'rgba(59,130,246,.15)',borderRadius:3,yAxisID:'y'},
-        {label:'Evaporator (°C)',data:weekly.map(w=>+w.evapApproach.toFixed(2)),type:'line',borderColor:'#8b5cf6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-        {label:'Condenser (°C)',data:weekly.map(w=>+w.condApproach.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-      ]},
-      options:chartOpts({y:'Occurrence %',y2:'Approach Temp (°C)',y2right:true})
-    });
+  const approachEl=document.getElementById('chart-ch-approach');
+  if(approachEl){
+    if(hasApproach && currApproach.length){
+      const ds=[
+        {label:'Occurrence (%)',data:currApproach.map(r=>+(r.occurrence/totOcc*100).toFixed(2)),backgroundColor:'rgba(59,130,246,.2)',borderRadius:3,yAxisID:'y'},
+        {label:'Evaporator (°C)',data:currApproach.map(r=>+(r.evapApproach||0).toFixed(3)),type:'line',borderColor:'#8b5cf6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Condenser (°C)',data:currApproach.map(r=>+(r.condApproach||0).toFixed(3)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      ];
+      if(lastApproach.length&&lastApproach.some(r=>r.evapApproach!==null)){
+        ds.push({label:'Evaporator Last Month',data:lastApproach.map(r=>+(r.evapApproach||0).toFixed(3)),type:'line',borderColor:'rgba(139,92,246,.5)',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
+        ds.push({label:'Condenser Last Month',data:lastApproach.map(r=>+(r.condApproach||0).toFixed(3)),type:'line',borderColor:'rgba(245,158,11,.5)',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
+      }
+      charts['ch-approach']=new Chart(approachEl.getContext('2d'),{type:'bar',data:{labels:plLabels,datasets:ds},options:chartOpts({y:'Occurrence %',y2:'Approach Temp (°C)',y2right:true})});
+    } else {
+      approachEl.closest('.card').querySelector('.card-sub').textContent='Données non disponibles pour ce fichier';
+    }
   }
+
   destroyChart('ch-flow');
-  if(weekly.length){
-    charts['ch-flow']=new Chart(document.getElementById('chart-ch-flow').getContext('2d'),{
-      type:'bar',
-      data:{labels:xlabels,datasets:[
-        {label:'Occurrence (%)',data:weekly.map((_,i)=>+(100/weekly.length).toFixed(1)),backgroundColor:'rgba(59,130,246,.15)',borderRadius:3,yAxisID:'y'},
-        {label:'Evaporator Flow (LPS)',data:weekly.map(w=>+w.chwFlow.toFixed(2)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-        {label:'Condenser Flow (LPS)',data:weekly.map(w=>+w.cwFlow.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-      ]},
-      options:chartOpts({y:'Occurrence %',y2:'Flow (LPS)',y2right:true})
-    });
+  const flowEl=document.getElementById('chart-ch-flow');
+  if(flowEl){
+    if(hasFlow && currApproach.length){
+      const ds=[
+        {label:'Occurrence (%)',data:currApproach.map(r=>+(r.occurrence/totOcc*100).toFixed(2)),backgroundColor:'rgba(6,182,212,.2)',borderRadius:3,yAxisID:'y'},
+        {label:'Evaporator Flow (LPS)',data:currApproach.map(r=>+(r.evapFlow||0).toFixed(2)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Condenser Flow (LPS)',data:currApproach.map(r=>+(r.condFlow||0).toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      ];
+      if(lastApproach.length&&lastApproach.some(r=>r.evapFlow!==null)){
+        ds.push({label:'Evap Flow Last Month',data:lastApproach.map(r=>+(r.evapFlow||0).toFixed(2)),type:'line',borderColor:'rgba(59,130,246,.5)',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
+        ds.push({label:'Cond Flow Last Month',data:lastApproach.map(r=>+(r.condFlow||0).toFixed(2)),type:'line',borderColor:'rgba(16,185,129,.5)',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
+      }
+      charts['ch-flow']=new Chart(flowEl.getContext('2d'),{type:'bar',data:{labels:plLabels,datasets:ds},options:chartOpts({y:'Occurrence %',y2:'Flow (LPS)',y2right:true})});
+    } else {
+      flowEl.closest('.card').querySelector('.card-sub').textContent='Données non disponibles pour ce fichier';
+    }
   }
 
   if(!allChillerNames.length) return;
