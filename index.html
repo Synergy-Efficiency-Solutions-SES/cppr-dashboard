@@ -841,33 +841,7 @@ function renderDetailed(){
     return ['chiller','chwp','cwp','ct','aux'].map(k=>+(b.reduce((s,r)=>s+r[k],0)/cool).toFixed(4));
   };
 
-  destroyChart('eff-compare');
-  const datasets=[];
-  if(p1data.length) datasets.push({label:periodLabel(lastPeriod)||lastPeriod,data:effBreakdown(p1data),backgroundColor:'rgba(100,116,139,.5)',borderRadius:4});
-  if(p2data.length) datasets.push({label:periodLabel(thisPeriod)||thisPeriod,data:effBreakdown(p2data),backgroundColor:'rgba(59,130,246,.7)',borderRadius:4});
-  if(datasets.length){
-    charts['eff-compare']=new Chart(document.getElementById('chart-eff-compare').getContext('2d'),{
-      type:'bar',
-      data:{labels:['Chiller','CHWP','CWP','CT','Aux'],datasets},
-      options:{...chartOpts({y:'kW/TR'}),indexAxis:'y'}
-    });
-  }
-
-  // Daily efficiency
-  destroyChart('eff-daily');
-  charts['eff-daily']=new Chart(document.getElementById('chart-eff-daily').getContext('2d'),{
-    type:'line',
-    data:{
-      labels:rows.map(r=>fmtShort(r.dateSerial)),
-      datasets:[
-        {label:'Eff (kW/TR)',data:rows.map(r=>+r.plantEff.toFixed(4)),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.08)',pointRadius:2,borderWidth:2,fill:true,tension:.3},
-        {label:'Moyenne',data:rows.map(()=>rows.length?+(rows.reduce((s,r)=>s+r.plantEff,0)/rows.length).toFixed(4):0),borderColor:'rgba(255,255,255,.2)',borderDash:[4,4],pointRadius:0,borderWidth:1},
-      ]
-    },
-    options:chartOpts({y:'kW/TR'})
-  });
-
-  // ── Efficiency shift KPIs + waterfall ──────────────────────
+  // ── Shared helpers ──────────────────────────────────────────
   const keys=['chiller','chwp','cwp','ct','aux'];
   const keyLabels=['Chiller','CHWP','CWP','CT','Aux'];
   const effBreakdownTotal=(arr)=>{
@@ -875,18 +849,27 @@ function renderDetailed(){
     const cool=Math.max(b.reduce((s,r)=>s+r.cooling,0),1);
     return keys.map(k=>b.reduce((s,r)=>s+r[k],0)/cool);
   };
-
-  // Helper: get data for a specific period from allData (ignoring month filter)
   const getForPeriod=(period,key)=>allData.filter(d=>(!client||d.client===client)&&d.period===period).flatMap(d=>d[key]);
-
-  // Determine periods: this, last, last-2
   const allPeriodsBase=[...new Set(allData.filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year))).map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
   const thisIdx=month?allPeriodsBase.indexOf(month):allPeriodsBase.length-1;
   const thisPer=allPeriodsBase[thisIdx];
   const lastPer=allPeriodsBase[thisIdx-1]||null;
   const last2Per=allPeriodsBase[thisIdx-2]||null;
 
-  // KPI badges + waterfall
+  // ── Efficiency comparison chart ──────────────────────────────
+  destroyChart('eff-compare');
+  const datasets=[];
+  if(p1data.length) datasets.push({label:periodLabel(lastPeriod)||lastPeriod,data:effBreakdownTotal(p1data),backgroundColor:'rgba(100,116,139,.5)',borderRadius:4});
+  if(p2data.length) datasets.push({label:periodLabel(thisPeriod)||thisPeriod,data:effBreakdownTotal(p2data),backgroundColor:'rgba(59,130,246,.7)',borderRadius:4});
+  if(datasets.length){
+    charts['eff-compare']=new Chart(document.getElementById('chart-eff-compare').getContext('2d'),{
+      type:'bar',
+      data:{labels:keyLabels,datasets},
+      options:{...chartOpts({y:'kW/TR'}),indexAxis:'y'}
+    });
+  }
+
+  // ── KPI badges + waterfall ───────────────────────────────────
   const v1full=p1data.length?effBreakdownTotal(p1data):null;
   const v2full=p2data.length?effBreakdownTotal(p2data):null;
   const kpiEl=document.getElementById('eff-shift-kpis');
