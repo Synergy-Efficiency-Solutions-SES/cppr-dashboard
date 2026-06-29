@@ -1534,11 +1534,14 @@ function renderWeeklyTrend(){
   const weekly=clientsData.length>0?clientsData[0].weekly:[];
   const labels=weekly.map(w=>w.yearWeek||w.week);
 
+  const FIELD_LABELS={coolingLoad:'Cooling Load (TR)',plantEff:'Plant Eff (kW/TR)',chillerEff:'Chiller Eff (kW/TR)',setPoint:'Set Point (°C)',dT:'Delta T (°C)',chwFlow:'CHW Flow (LPS)',cwFlow:'CW Flow (LPS)',evapApproach:'Evap Approach (°C)',condApproach:'Cond Approach (°C)',ct1Approach:'CT Approach (°C)',wetBulb:'Wet Bulb (°C)',outsideAir:'Outside Air (°C)',tds:'TDS',ph:'pH',coc:'COC',makeupWater:'Makeup Water (m³)'};
+  const multi=clientsData.length>1;
+
   // Helper: build datasets for a field, one per client
   const mkDatasets=(field,type,colors,yAxisID,extra={})=>clientsData.map((cd,i)=>({
-    label:`${cd.client}${clientsData.length>1?' – ':''}`,
+    label:multi?`${FIELD_LABELS[field]||field} — ${cd.client}`:(FIELD_LABELS[field]||field),
     data:cd.weekly.map(w=>typeof w[field]==='number'?+w[field].toFixed(4):0),
-    ...(type==='bar'?{backgroundColor:colors[i%colors.length]+'99',borderRadius:3}:{borderColor:colors[i%colors.length],pointRadius:3,borderWidth:2,fill:false}),
+    ...(type==='bar'?{backgroundColor:colors[i%colors.length],borderRadius:3}:{borderColor:colors[i%colors.length],pointRadius:3,borderWidth:2,fill:false}),
     type,yAxisID:yAxisID||'y',...extra
   }));
 
