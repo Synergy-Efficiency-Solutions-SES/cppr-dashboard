@@ -862,40 +862,52 @@ function renderDetailed(){
     options:chartOpts({y:'kW/TR'})
   });
 
+  // Helper: get data for a specific period from allData (ignoring month filter)
+  const getForPeriod=(period,key)=>allData.filter(d=>(!client||d.client===client)&&d.period===period).flatMap(d=>d[key]);
+
+  // Determine periods: this, last, last-2
+  const allPeriodsBase=[...new Set(allData.filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year))).map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
+  const thisIdx=month?allPeriodsBase.indexOf(month):allPeriodsBase.length-1;
+  const thisPer=allPeriodsBase[thisIdx];
+  const lastPer=allPeriodsBase[thisIdx-1]||null;
+  const last2Per=allPeriodsBase[thisIdx-2]||null;
+
   // Part-load Chiller Plant
-  const pl=filteredData.flatMap(d=>d.partloadPlant);
-  const pr=filteredData[0]?.partloadRef||[];
+  const pl=getForPeriod(thisPer,'partloadPlant');
+  const plLast=lastPer?getForPeriod(lastPer,'partloadPlant'):[];
+  const plLast2=last2Per?getForPeriod(last2Per,'partloadPlant'):[];
+  const pr=getForPeriod(thisPer,'partloadRef');
   destroyChart('partload');
   if(pl.length){
     const totalOcc=pl.reduce((s,p)=>s+p.occurrence,0)||1;
+    const ds=[
+      {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/totalOcc*100).toFixed(2)),backgroundColor:'rgba(59,130,246,.25)',borderRadius:3,yAxisID:'y'},
+      {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+    ];
+    if(plLast.length) ds.push({label:'Last Month (kW/TR)',data:plLast.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,borderDash:[],fill:false,yAxisID:'y2'});
+    if(plLast2.length) ds.push({label:'Last 2 Month (kW/TR)',data:plLast2.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
+    if(pr.length) ds.push({label:'Reference (kW/TR)',data:pr.map(p=>+p.plantEff.toFixed(4)),type:'line',borderColor:'rgba(245,158,11,.8)',pointRadius:3,borderDash:[4,4],borderWidth:2,fill:false,yAxisID:'y2'});
     charts['partload']=new Chart(document.getElementById('chart-partload').getContext('2d'),{
-      type:'bar',
-      data:{
-        labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),
-        datasets:[
-          {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/totalOcc*100).toFixed(2)),backgroundColor:'rgba(59,130,246,.3)',borderRadius:3,yAxisID:'y'},
-          {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-          ...(pr.length?[{label:'Reference (kW/TR)',data:pr.map(p=>+p.plantEff.toFixed(4)),type:'line',borderColor:'rgba(245,158,11,.7)',pointRadius:3,borderDash:[4,4],borderWidth:2,fill:false,yAxisID:'y2'}]:[]),
-        ]
-      },
+      type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},
       options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})
     });
   }
 
   // Part-load CH1
-  const ch1=filteredData.flatMap(d=>d.partloadCH1);
+  const ch1=getForPeriod(thisPer,'partloadCH1');
+  const ch1Last=lastPer?getForPeriod(lastPer,'partloadCH1'):[];
+  const ch1Last2=last2Per?getForPeriod(last2Per,'partloadCH1'):[];
   destroyChart('partload-ch1');
   if(ch1.length){
     const tot=ch1.reduce((s,p)=>s+p.occurrence,0)||1;
+    const ds2=[
+      {label:'Occurrence (%)',data:ch1.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(139,92,246,.25)',borderRadius:3,yAxisID:'y'},
+      {label:'Current (kW/TR)',data:ch1.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#8b5cf6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+    ];
+    if(ch1Last.length) ds2.push({label:'Last Month (kW/TR)',data:ch1Last.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
+    if(ch1Last2.length) ds2.push({label:'Last 2 Month (kW/TR)',data:ch1Last2.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
     charts['partload-ch1']=new Chart(document.getElementById('chart-partload-ch1').getContext('2d'),{
-      type:'bar',
-      data:{
-        labels:ch1.map(p=>(p.partLoad*100).toFixed(0)+'%'),
-        datasets:[
-          {label:'Occurrence (%)',data:ch1.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(139,92,246,.3)',borderRadius:3,yAxisID:'y'},
-          {label:'CH1 (kW/TR)',data:ch1.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#8b5cf6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-        ]
-      },
+      type:'bar',data:{labels:ch1.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds2},
       options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})
     });
   }
