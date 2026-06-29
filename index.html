@@ -508,7 +508,7 @@ async function parseFile(file,client){
           for(let i=1;i<wd.length;i++){
             const row=wd[i];
             if(!row[1])continue; // row[1] = week name e.g. "Week 1"
-            weekly.push({week:String(row[1]),plantEff:+row[9]||0,chillerEff:+row[10]||0,coolingLoad:+row[17]||0});
+            weekly.push({week:String(row[1]),yearWeek:String(row[2]||''),plantEff:+row[9]||0,chillerEff:+row[10]||0,coolingLoad:+row[17]||0,period:per});
           }
           console.log('Weekly parsed:', weekly);
         }
@@ -645,7 +645,7 @@ function renderMonthly(){
     charts['weekly']=new Chart(ctx,{
       type:'bar',
       data:{
-        labels:allWeekly.map(w=>w.week),
+        labels:allWeekly.map(w=>(w.period?w.period.split('-').reverse().join('/'):'')+' '+w.week),
         datasets:[
           {label:'Cooling Load (TR)',data:allWeekly.map(w=>+w.coolingLoad.toFixed(1)),backgroundColor:'rgba(59,130,246,.6)',borderRadius:4,yAxisID:'y'},
           {label:'Plant Eff (kW/TR)',data:allWeekly.map(w=>+w.plantEff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
