@@ -595,7 +595,7 @@ function renderMonthly(){
   // Electricity savings = (oldEff - currentEff) * cooling
   const elecSavings=Math.max(0,(metrics.oldEff-avgEff)*totalCooling);
   const co2=elecSavings*(metrics.emissionFactor||0.84)/1000;
-  const trees=Math.round(co2/0.021);
+  const trees=Math.round(co2*50);
   const coolingPerRoom=metrics.rns>0?totalCooling/metrics.rns:0;
   const energyPerRoom=metrics.rns>0?metrics.totalElec/metrics.rns:0;
 
