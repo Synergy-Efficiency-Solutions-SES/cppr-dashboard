@@ -500,7 +500,7 @@ async function parseFile(file,client){
 
         // Weekly Breakdown
         let weekly=[];
-        const wS=wb.Sheets['Weekly Breakdown Data'];
+        const wS=wb.Sheets['Weekly Breakdown Data '] || wb.Sheets['Weekly Breakdown Data'];
         if(wS){
           const wd=XLSX.utils.sheet_to_json(wS,{header:1,defval:null,raw:true});
           console.log('Weekly sheet headers:', wd[0]);
