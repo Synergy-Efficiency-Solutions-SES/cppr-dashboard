@@ -163,6 +163,13 @@ tr:hover td{background:rgba(59,130,246,.04)}
       <button class="page-tab active" onclick="showPage('monthly')">Monthly Overview</button>
       <button class="page-tab" onclick="showPage('yearly')">Yearly Overview</button>
       <button class="page-tab" onclick="showPage('detailed')">Chiller Plant</button>
+      <button class="page-tab" onclick="showPage('maincH')">Main CH</button>
+      <button class="page-tab" onclick="showPage('chwp')">CHWP</button>
+      <button class="page-tab" onclick="showPage('cwp')">CWP</button>
+      <button class="page-tab" onclick="showPage('ct')">CT</button>
+      <button class="page-tab" onclick="showPage('comments')">Comments</button>
+      <button class="page-tab" onclick="showPage('weekly')">Weekly Trend</button>
+      <button class="page-tab" onclick="showPage('trending')">Trending</button>
       <button class="page-tab" onclick="showPage('raw')">Daily Data</button>
     </div>
     <button class="btn btn-ghost" onclick="resetDashboard()" style="font-size:12px">➕ Données</button>
@@ -327,6 +334,177 @@ tr:hover td{background:rgba(59,130,246,.04)}
     </div>
   </div>
 
+
+  <!-- PAGE: MAIN CH -->
+  <div class="page" id="page-maincH">
+    <div class="section-title">Detailed Performance — Main Chiller(s)</div>
+    <div id="chillers-container"></div>
+  </div>
+
+  <!-- PAGE: CHWP -->
+  <div class="page" id="page-chwp">
+    <div class="section-title">Detailed Performance: Evaporator Side (CHWP)</div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">CHWP Part-Load Efficiency</div><div class="card-sub">Occurrence % + Efficiency kW/TR vs Part Load</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-pl"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Chilled Water Flow — Weekly</div><div class="card-sub">CHW Flow (LPS) par semaine</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-flow"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Evaporator Approach — Weekly</div><div class="card-sub">°C par semaine</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-evap-approach"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Chilled Water Setpoint & Delta T — Weekly</div><div class="card-sub">Set Point (°C) + dT (°C)</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-chwp-setpoint"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: CWP -->
+  <div class="page" id="page-cwp">
+    <div class="section-title">Detailed Performance: Condenser Side (CWP)</div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">CWP Part-Load Efficiency</div><div class="card-sub">Occurrence % + Efficiency kW/TR vs Part Load</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-pl"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Condenser Water Flow — Weekly</div><div class="card-sub">CW Flow (LPS) par semaine</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-flow"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Condenser Approach — Weekly</div><div class="card-sub">°C par semaine</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-cond-approach"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Condenser Flow vs Part Load</div><div class="card-sub">Current + Last Month</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-cwp-pl-flow"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: CT -->
+  <div class="page" id="page-ct">
+    <div class="section-title">Detailed Performance: Cooling Tower</div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">CT Part-Load Efficiency</div><div class="card-sub">Occurrence % + Efficiency kW/TR vs Part Load</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-ct-pl"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Cooling Tower Approach — Weekly</div><div class="card-sub">CT Approach + Wet Bulb + Outside Air (°C)</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-ct-approach"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2">
+      <div class="card">
+        <div class="card-head"><div class="card-title">CWP TDS & pH — Weekly</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-tds"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Cycle of Concentration (COC) — Weekly</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-coc"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: COMMENTS -->
+  <div class="page" id="page-comments">
+    <div class="section-title">Comments Detailed Performance</div>
+    <div class="card">
+      <div class="card-body" style="padding:24px">
+        <div id="comments-detailed" style="font-size:13px;color:var(--label);line-height:2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: WEEKLY TREND -->
+  <div class="page" id="page-weekly">
+    <div class="section-title">Weekly Performance Parameter — Trend in a Year</div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Cooling Load & Plant Efficiency — Weekly</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-wt-load"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Chilled Water Setpoint & Delta T</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-wt-setpoint"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Chilled Water Flow</div></div>
+        <div class="card-body"><div class="chart-h180"><canvas id="chart-wt-chwflow"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Condenser Water Flow</div></div>
+        <div class="card-body"><div class="chart-h180"><canvas id="chart-wt-cwflow"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Evaporator Approach</div></div>
+        <div class="card-body"><div class="chart-h180"><canvas id="chart-wt-evap"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Condenser Approach</div></div>
+        <div class="card-body"><div class="chart-h180"><canvas id="chart-wt-cond"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Cooling Tower Approach</div></div>
+        <div class="card-body"><div class="chart-h180"><canvas id="chart-wt-ct"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">TDS & pH</div></div>
+        <div class="card-body"><div class="chart-h180"><canvas id="chart-wt-tds"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Cycle of Concentration (COC)</div></div>
+        <div class="card-body"><div class="chart-h180"><canvas id="chart-wt-coc"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Condenser Makeup Water</div></div>
+        <div class="card-body"><div class="chart-h180"><canvas id="chart-wt-makeup"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: TRENDING -->
+  <div class="page" id="page-trending">
+    <div class="section-title">Trending Analysis</div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Electricity Usage Trend</div><div class="card-sub">Total Electricity vs RNS</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-trend-elec-rns"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Cooling Load (TRh) and RNS</div><div class="card-sub">Cooling Load vs RNS</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-trend-cooling-rns"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Energy Per Room vs RNS</div><div class="card-sub">kWh/RNS vs RNS</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-trend-epr-rns"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Cooling Load vs Plant Efficiency</div><div class="card-sub">kW/TR vs TRh</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-trend-eff-cooling"></canvas></div></div>
+      </div>
+    </div>
+  </div>
   <!-- PAGE: DAILY DATA -->
   <div class="page" id="page-raw">
     <div class="section-title">Détail journalier — Billing Data</div>
@@ -514,7 +692,27 @@ async function parseFile(file,client){
           for(let i=1;i<wd.length;i++){
             const row=wd[i];
             if(!row[1])continue; // row[1] = week name e.g. "Week 1"
-            weekly.push({week:String(row[1]),yearWeek:String(row[2]||''),plantEff:+row[9]||0,chillerEff:+row[10]||0,coolingLoad:+row[17]||0,period:per});
+            weekly.push({
+              week:String(row[1]),yearWeek:String(row[2]||''),
+              chwFlow:+row[3]||0,       // Total CHW Flow (LPS)
+              wetBulb:+row[7]||0,       // CH Wet bulb Temperature
+              dT:+row[8]||0,            // dT
+              plantEff:+row[9]||0,      // Plant Efficiency
+              chillerEff:+row[10]||0,   // Chiller Efficiency
+              condApproach:+row[11]||0, // Condenser Approach
+              evapApproach:+row[12]||0, // Evaporator Approach
+              outsideAir:+row[13]||0,   // Outside air Temperature
+              setPoint:+row[16]||0,     // Set Point
+              coolingLoad:+row[17]||0,  // Cooling Load
+              cwFlow:+row[18]||0,       // CW Flow
+              ct1Approach:+row[19]||0,  // CT 1 Approach
+              ct1Freq:+row[20]||0,      // CT 1 Frequency
+              ph:+row[23]||0,           // pH
+              tds:+row[24]||0,          // TDS
+              makeupWater:+row[25]||0,  // Condenser makeup water
+              coc:+row[26]||0,          // CoC
+              period:per
+            });
           }
           console.log('Weekly parsed:', weekly);
         }
@@ -605,6 +803,13 @@ function renderCurrentPage(){
   if(currentPage==='monthly')renderMonthly();
   else if(currentPage==='yearly')renderYearly();
   else if(currentPage==='detailed')renderDetailed();
+  else if(currentPage==='maincH')renderMainCH();
+  else if(currentPage==='chwp')renderCHWP();
+  else if(currentPage==='cwp')renderCWP();
+  else if(currentPage==='ct')renderCT();
+  else if(currentPage==='comments')renderComments();
+  else if(currentPage==='weekly')renderWeeklyTrend();
+  else if(currentPage==='trending')renderTrending();
   else if(currentPage==='raw')renderRaw();
 }
 
@@ -965,6 +1170,337 @@ function renderDetailed(){
       options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})
     });
   }
+}
+
+
+// ═══════════════════════════════════════════════════
+// MAIN CH PAGE — Dynamic chillers
+// ═══════════════════════════════════════════════════
+function renderMainCH(){
+  const client=document.getElementById('sel-client').value;
+  const year=document.getElementById('sel-year').value;
+  const month=document.getElementById('sel-month').value;
+  const allPeriodsBase=[...new Set(allData.filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year))).map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
+  const thisIdx=month?allPeriodsBase.indexOf(month):allPeriodsBase.length-1;
+  const thisPer=allPeriodsBase[thisIdx];
+  const lastPer=allPeriodsBase[thisIdx-1]||null;
+  const last2Per=allPeriodsBase[thisIdx-2]||null;
+  const getData=(period,key)=>allData.filter(d=>(!client||d.client===client)&&d.period===period).flatMap(d=>d[key]||[]);
+  // Collect all chiller names dynamically
+  const thisData=allData.filter(d=>(!client||d.client===client)&&d.period===thisPer);
+  const allChillerNames=[...new Set(thisData.flatMap(d=>Object.keys(d.chillerSheets||{})))].sort();
+  const container=document.getElementById('chillers-container');
+  // Destroy old charts
+  allChillerNames.forEach(cn=>{const id='chart-ch-'+cn.replace(/\s/g,'-');destroyChart(id);});
+  if(!allChillerNames.length){container.innerHTML='<div class="empty">Aucune feuille chiller trouvée (CH 1, CH 2...)</div>';return;}
+  container.innerHTML=`<div class="chart-grid grid-2">${allChillerNames.map(cn=>{
+    const id='chart-ch-'+cn.replace(/\s/g,'-');
+    return `<div class="card"><div class="card-head"><div class="card-title">${cn} VS Specification</div><div class="card-sub">Part Load — Current + Last Month + Last 2 Month</div></div><div class="card-body"><div class="chart-h260"><canvas id="${id}"></canvas></div></div></div>`;
+  }).join('')}</div>`;
+  allChillerNames.forEach(cn=>{
+    const id='chart-ch-'+cn.replace(/\s/g,'-');
+    const curr=thisData.flatMap(d=>(d.chillerSheets||{})[cn]||[]);
+    const last=lastPer?allData.filter(d=>(!client||d.client===client)&&d.period===lastPer).flatMap(d=>(d.chillerSheets||{})[cn]||[]):[];
+    const last2=last2Per?allData.filter(d=>(!client||d.client===client)&&d.period===last2Per).flatMap(d=>(d.chillerSheets||{})[cn]||[]):[];
+    const ref=getData(thisPer,'partloadRef');
+    if(!curr.length)return;
+    const tot=curr.reduce((s,p)=>s+p.occurrence,0)||1;
+    const ds=[
+      {label:'Occurrence (%)',data:curr.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(59,130,246,.25)',borderRadius:3,yAxisID:'y'},
+      {label:'Current (kW/TR)',data:curr.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+    ];
+    if(last.length) ds.push({label:'Last Month',data:last.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
+    if(last2.length) ds.push({label:'Last 2 Month',data:last2.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
+    if(ref.length) ds.push({label:'Reference',data:ref.map(p=>+p.chillerEff.toFixed(4)),type:'line',borderColor:'rgba(245,158,11,.8)',pointRadius:3,borderDash:[4,4],borderWidth:2,fill:false,yAxisID:'y2'});
+    charts[id]=new Chart(document.getElementById(id).getContext('2d'),{
+      type:'bar',data:{labels:curr.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},
+      options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// CHWP PAGE
+// ═══════════════════════════════════════════════════
+function renderCHWP(){
+  const weekly=getWeeklyForFilter();
+  const{thisPer,lastPer,getData}=getPeriodHelpers();
+  const pl=getData(thisPer,'partloadCHWP');
+  const plLast=lastPer?getData(lastPer,'partloadCHWP'):[];
+  // Part Load
+  destroyChart('chwp-pl');
+  if(pl.length){
+    const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
+    const ds=[
+      {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(6,182,212,.25)',borderRadius:3,yAxisID:'y'},
+      {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+    ];
+    if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
+    charts['chwp-pl']=new Chart(document.getElementById('chart-chwp-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
+  }
+  // CHW Flow weekly
+  destroyChart('chwp-flow');
+  if(weekly.length){
+    charts['chwp-flow']=new Chart(document.getElementById('chart-chwp-flow').getContext('2d'),{
+      type:'bar',
+      data:{labels:weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week),
+        datasets:[{label:'CHW Flow (LPS)',data:weekly.map(w=>+w.chwFlow.toFixed(2)),backgroundColor:'rgba(6,182,212,.6)',borderRadius:3}]},
+      options:{...chartOpts({y:'LPS'}),plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}},tooltip:{mode:'index',intersect:false}}}
+    });
+  }
+  // Evaporator Approach weekly
+  destroyChart('evap-approach');
+  if(weekly.length){
+    charts['evap-approach']=new Chart(document.getElementById('chart-evap-approach').getContext('2d'),{
+      type:'bar',
+      data:{labels:weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week),
+        datasets:[{label:'Evaporator Approach (°C)',data:weekly.map(w=>+w.evapApproach.toFixed(2)),backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}]},
+      options:chartOpts({y:'°C'})
+    });
+  }
+  // Setpoint & dT weekly
+  destroyChart('chwp-setpoint');
+  if(weekly.length){
+    charts['chwp-setpoint']=new Chart(document.getElementById('chart-chwp-setpoint').getContext('2d'),{
+      type:'line',
+      data:{labels:weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week),
+        datasets:[
+          {label:'Set Point (°C)',data:weekly.map(w=>+w.setPoint.toFixed(2)),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
+          {label:'Delta T (°C)',data:weekly.map(w=>+w.dT.toFixed(2)),borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        ]},
+      options:chartOpts({y:'°C (SP)',y2:'°C (dT)',y2right:true})
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// CWP PAGE
+// ═══════════════════════════════════════════════════
+function renderCWP(){
+  const weekly=getWeeklyForFilter();
+  const{thisPer,lastPer,getData}=getPeriodHelpers();
+  const pl=getData(thisPer,'partloadCWP');
+  const plLast=lastPer?getData(lastPer,'partloadCWP'):[];
+  destroyChart('cwp-pl');
+  if(pl.length){
+    const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
+    const ds=[
+      {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(16,185,129,.25)',borderRadius:3,yAxisID:'y'},
+      {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+    ];
+    if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#f59e0b',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
+    charts['cwp-pl']=new Chart(document.getElementById('chart-cwp-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
+  }
+  destroyChart('cwp-flow');
+  if(weekly.length){
+    charts['cwp-flow']=new Chart(document.getElementById('chart-cwp-flow').getContext('2d'),{
+      type:'bar',data:{labels:weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week),
+        datasets:[{label:'CW Flow (LPS)',data:weekly.map(w=>+w.cwFlow.toFixed(2)),backgroundColor:'rgba(16,185,129,.6)',borderRadius:3}]},
+      options:chartOpts({y:'LPS'})
+    });
+  }
+  destroyChart('cond-approach');
+  if(weekly.length){
+    charts['cond-approach']=new Chart(document.getElementById('chart-cond-approach').getContext('2d'),{
+      type:'bar',data:{labels:weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week),
+        datasets:[{label:'Condenser Approach (°C)',data:weekly.map(w=>+(w.condApproach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.6)',borderRadius:3}]},
+      options:chartOpts({y:'°C'})
+    });
+  }
+  destroyChart('cwp-pl-flow');
+  if(pl.length){
+    const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
+    charts['cwp-pl-flow']=new Chart(document.getElementById('chart-cwp-pl-flow').getContext('2d'),{
+      type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),
+        datasets:[{label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(16,185,129,.3)',borderRadius:3}]},
+      options:chartOpts({y:'Occurrence %'})
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// CT PAGE
+// ═══════════════════════════════════════════════════
+function renderCT(){
+  const weekly=getWeeklyForFilter();
+  const{thisPer,lastPer,getData}=getPeriodHelpers();
+  const pl=getData(thisPer,'partloadCT');
+  const plLast=lastPer?getData(lastPer,'partloadCT'):[];
+  destroyChart('ct-pl');
+  if(pl.length){
+    const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
+    const ds=[
+      {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(245,158,11,.25)',borderRadius:3,yAxisID:'y'},
+      {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+    ];
+    if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
+    charts['ct-pl']=new Chart(document.getElementById('chart-ct-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
+  }
+  const xlabels=weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week);
+  destroyChart('ct-approach');
+  if(weekly.length){
+    charts['ct-approach']=new Chart(document.getElementById('chart-ct-approach').getContext('2d'),{
+      type:'bar',data:{labels:xlabels,datasets:[
+        {label:'CT Approach (°C)',data:weekly.map(w=>+(w.ct1Approach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.5)',borderRadius:3},
+        {label:'Wet Bulb (°C)',data:weekly.map(w=>+(w.wetBulb||0).toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:3,borderWidth:2,fill:false},
+        {label:'Outside Air (°C)',data:weekly.map(w=>+(w.outsideAir||0).toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false},
+      ]},options:chartOpts({y:'°C'})
+    });
+  }
+  destroyChart('ct-tds');
+  if(weekly.length){
+    charts['ct-tds']=new Chart(document.getElementById('chart-ct-tds').getContext('2d'),{
+      type:'line',data:{labels:xlabels,datasets:[
+        {label:'TDS',data:weekly.map(w=>+(w.tds||0).toFixed(0)),borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false},
+        {label:'pH',data:weekly.map(w=>+(w.ph||0).toFixed(2)),borderColor:'#3b82f6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+      ]},options:chartOpts({y:'TDS',y2:'pH',y2right:true})
+    });
+  }
+  destroyChart('ct-coc');
+  if(weekly.length){
+    charts['ct-coc']=new Chart(document.getElementById('chart-ct-coc').getContext('2d'),{
+      type:'bar',data:{labels:xlabels,datasets:[{label:'COC',data:weekly.map(w=>+(w.coc||0).toFixed(2)),backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}]},
+      options:chartOpts({y:'COC'})
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// COMMENTS PAGE
+// ═══════════════════════════════════════════════════
+function renderComments(){
+  const comments=filteredData.flatMap(d=>d.comments);
+  const el=document.getElementById('comments-detailed');
+  if(!el)return;
+  if(comments.length){
+    el.innerHTML=comments.map(c=>`<p style="margin-bottom:14px;padding-left:12px;border-left:3px solid var(--accent)">— ${c.text}</p>`).join('');
+  } else {
+    el.innerHTML='<div style="color:var(--muted)">Aucun commentaire dans les fichiers chargés.</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// WEEKLY TREND PAGE
+// ═══════════════════════════════════════════════════
+function renderWeeklyTrend(){
+  const weekly=getWeeklyForFilter();
+  const labels=weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week);
+  const wtCharts=[
+    ['wt-load',{type:'bar',datasets:[
+      {label:'Cooling Load (TR)',data:weekly.map(w=>+w.coolingLoad.toFixed(1)),backgroundColor:'rgba(59,130,246,.6)',borderRadius:3,yAxisID:'y'},
+      {label:'Plant Eff (kW/TR)',data:weekly.map(w=>+w.plantEff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:'Chiller Eff (kW/TR)',data:weekly.map(w=>+w.chillerEff.toFixed(4)),type:'line',borderColor:'#f59e0b',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+    ],opts:chartOpts({y:'TR',y2:'kW/TR',y2right:true})}],
+    ['wt-setpoint',{type:'line',datasets:[
+      {label:'Set Point (°C)',data:weekly.map(w=>+w.setPoint.toFixed(2)),borderColor:'#3b82f6',pointRadius:3,borderWidth:2,fill:false},
+      {label:'Delta T (°C)',data:weekly.map(w=>+w.dT.toFixed(2)),borderColor:'#06b6d4',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+    ],opts:chartOpts({y:'°C (SP)',y2:'°C (dT)',y2right:true})}],
+    ['wt-chwflow',{type:'bar',datasets:[{label:'CHW Flow (LPS)',data:weekly.map(w=>+w.chwFlow.toFixed(2)),backgroundColor:'rgba(6,182,212,.6)',borderRadius:3}],opts:chartOpts({y:'LPS'})}],
+    ['wt-cwflow',{type:'bar',datasets:[{label:'CW Flow (LPS)',data:weekly.map(w=>+w.cwFlow.toFixed(2)),backgroundColor:'rgba(16,185,129,.6)',borderRadius:3}],opts:chartOpts({y:'LPS'})}],
+    ['wt-evap',{type:'bar',datasets:[{label:'Evap Approach (°C)',data:weekly.map(w=>+(w.evapApproach||0).toFixed(2)),backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}],opts:chartOpts({y:'°C'})}],
+    ['wt-cond',{type:'bar',datasets:[{label:'Cond Approach (°C)',data:weekly.map(w=>+(w.condApproach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.6)',borderRadius:3}],opts:chartOpts({y:'°C'})}],
+    ['wt-ct',{type:'bar',datasets:[
+      {label:'CT Approach (°C)',data:weekly.map(w=>+(w.ct1Approach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.5)',borderRadius:3},
+      {label:'Wet Bulb (°C)',data:weekly.map(w=>+(w.wetBulb||0).toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:3,borderWidth:2,fill:false},
+    ],opts:chartOpts({y:'°C'})}],
+    ['wt-tds',{type:'line',datasets:[
+      {label:'TDS',data:weekly.map(w=>+(w.tds||0).toFixed(0)),borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false},
+      {label:'pH',data:weekly.map(w=>+(w.ph||0).toFixed(2)),borderColor:'#3b82f6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+    ],opts:chartOpts({y:'TDS',y2:'pH',y2right:true})}],
+    ['wt-coc',{type:'bar',datasets:[{label:'COC',data:weekly.map(w=>+(w.coc||0).toFixed(2)),backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}],opts:chartOpts({y:'COC'})}],
+    ['wt-makeup',{type:'bar',datasets:[{label:'Makeup Water (m³)',data:weekly.map(w=>+(w.makeupWater||0).toFixed(2)),backgroundColor:'rgba(59,130,246,.5)',borderRadius:3}],opts:chartOpts({y:'m³'})}],
+  ];
+  wtCharts.forEach(([id,cfg])=>{
+    destroyChart(id);
+    const el=document.getElementById('chart-'+id);
+    if(!el||!weekly.length)return;
+    charts[id]=new Chart(el.getContext('2d'),{type:cfg.type,data:{labels,datasets:cfg.datasets},options:cfg.opts});
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// TRENDING PAGE
+// ═══════════════════════════════════════════════════
+function renderTrending(){
+  // Group by period, use filteredData
+  const byPeriod={};
+  for(const d of filteredData){
+    if(!byPeriod[d.period])byPeriod[d.period]={period:d.period,billing:[],metrics:{}};
+    byPeriod[d.period].billing.push(...d.billing);
+    const m=d.metrics;const bm=byPeriod[d.period].metrics;
+    bm.rns=(bm.rns||0)+m.rns;bm.totalElec=(bm.totalElec||0)+m.totalElec;
+  }
+  const pts=Object.values(byPeriod).filter(p=>p.period&&p.period!=='—'&&p.metrics.rns>0).sort((a,b)=>a.period.localeCompare(b.period));
+  const scatterOpts=(xl,yl)=>({
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label||''}: (${c.parsed.x}, ${c.parsed.y})`}}},
+    scales:{
+      x:{title:{display:true,text:xl,color:'#64748b',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(42,48,80,.5)'}},
+      y:{title:{display:true,text:yl,color:'#64748b',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(42,48,80,.5)'}}
+    }
+  });
+  const scatterDS=(data,color)=>({
+    type:'scatter',
+    data:data,
+    backgroundColor:color,
+    pointRadius:6,
+    pointHoverRadius:8,
+  });
+  // 1. Total Electricity vs RNS
+  destroyChart('trend-elec-rns');
+  charts['trend-elec-rns']=new Chart(document.getElementById('chart-trend-elec-rns').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[{...scatterDS(pts.map(p=>({x:p.metrics.rns,y:p.metrics.totalElec,label:periodLabel(p.period)||p.period})),'#3b82f6'),label:'Electricity vs RNS',
+      datalabels:{display:false}}]},
+    options:{...scatterOpts('RNS','Total Electricity (kWh)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, Elec=${Math.round(c.parsed.y)}`}}}}
+  });
+  // 2. Cooling Load vs RNS
+  destroyChart('trend-cooling-rns');
+  charts['trend-cooling-rns']=new Chart(document.getElementById('chart-trend-cooling-rns').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[{...scatterDS(pts.map(p=>({x:p.metrics.rns,y:p.billing.reduce((s,r)=>s+r.cooling,0)})),'#06b6d4')}]},
+    options:{...scatterOpts('RNS','Cooling Load (TRh)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, Cooling=${Math.round(c.parsed.y)}`}}}}
+  });
+  // 3. Energy Per Room vs RNS
+  destroyChart('trend-epr-rns');
+  charts['trend-epr-rns']=new Chart(document.getElementById('chart-trend-epr-rns').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[{...scatterDS(pts.map(p=>({x:p.metrics.rns,y:p.metrics.rns>0?+(p.metrics.totalElec/p.metrics.rns).toFixed(2):0})),'#8b5cf6')}]},
+    options:{...scatterOpts('RNS','Energy Per Room (kWh/RNS)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, EPR=${c.parsed.y}`}}}}
+  });
+  // 4. Cooling Load vs Plant Efficiency
+  destroyChart('trend-eff-cooling');
+  charts['trend-eff-cooling']=new Chart(document.getElementById('chart-trend-eff-cooling').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[{...scatterDS(pts.map(p=>{const b=p.billing;const tc=b.reduce((s,r)=>s+r.cooling,0);const tp=b.reduce((s,r)=>s+r.totalPlant,0);return{x:Math.round(tc),y:tc>0?+(tp/tc).toFixed(4):0};}),'#10b981')}]},
+    options:{...scatterOpts('Cooling Load (TRh)','Plant Efficiency (kW/TR)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: Cooling=${c.parsed.x}, Eff=${c.parsed.y}`}}}}
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+function getPeriodHelpers(){
+  const client=document.getElementById('sel-client').value;
+  const year=document.getElementById('sel-year').value;
+  const month=document.getElementById('sel-month').value;
+  const base=allData.filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year)));
+  const allPers=[...new Set(base.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
+  const thisIdx=month?allPers.indexOf(month):allPers.length-1;
+  const thisPer=allPers[thisIdx];
+  const lastPer=allPers[thisIdx-1]||null;
+  const last2Per=allPers[thisIdx-2]||null;
+  const getData=(period,key)=>allData.filter(d=>(!client||d.client===client)&&d.period===period).flatMap(d=>d[key]||[]);
+  return{thisPer,lastPer,last2Per,getData,client};
+}
+
+function getWeeklyForFilter(){
+  const client=document.getElementById('sel-client').value;
+  const year=document.getElementById('sel-year').value;
+  return filteredData
+    .filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year)))
+    .slice().sort((a,b)=>a.period.localeCompare(b.period))
+    .flatMap(d=>d.weekly);
 }
 
 // ═══════════════════════════════════════════════════
