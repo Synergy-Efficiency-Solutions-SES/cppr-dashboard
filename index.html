@@ -501,9 +501,17 @@ async function parseFile(file,client){
         // Weekly Breakdown
         let weekly=[];
         const wS=wb.Sheets['Weekly Breakdown Data'];
-        if(wS){const wd=XLSX.utils.sheet_to_json(wS,{header:1,defval:null,raw:true});
-          for(let i=1;i<wd.length;i++){const row=wd[i];if(!row[0])continue;
-            weekly.push({week:row[1]||('Sem '+i),plantEff:+row[9]||0,chillerEff:+row[10]||0,coolingLoad:+row[17]||0})}}
+        if(wS){
+          const wd=XLSX.utils.sheet_to_json(wS,{header:1,defval:null,raw:true});
+          console.log('Weekly sheet headers:', wd[0]);
+          console.log('Weekly row 1:', wd[1]);
+          for(let i=1;i<wd.length;i++){
+            const row=wd[i];
+            if(!row[1])continue; // row[1] = week name e.g. "Week 1"
+            weekly.push({week:String(row[1]),plantEff:+row[9]||0,chillerEff:+row[10]||0,coolingLoad:+row[17]||0});
+          }
+          console.log('Weekly parsed:', weekly);
+        }
 
         // Chiller Plant part-load
         let partloadPlant=[];
