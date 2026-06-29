@@ -1505,6 +1505,41 @@ function renderWeeklyTrend(){
 }
 
 // ═══════════════════════════════════════════════════
+// LINEAR REGRESSION HELPER
+// ═══════════════════════════════════════════════════
+function linearRegression(pts){
+  const n=pts.length;
+  if(n<2)return null;
+  const sx=pts.reduce((s,p)=>s+p.x,0);
+  const sy=pts.reduce((s,p)=>s+p.y,0);
+  const sxy=pts.reduce((s,p)=>s+p.x*p.y,0);
+  const sxx=pts.reduce((s,p)=>s+p.x*p.x,0);
+  const denom=n*sxx-sx*sx;
+  if(denom===0)return null;
+  const m=(n*sxy-sx*sy)/denom;
+  const b=(sy-m*sx)/n;
+  const xmin=Math.min(...pts.map(p=>p.x));
+  const xmax=Math.max(...pts.map(p=>p.x));
+  return[{x:xmin,y:m*xmin+b},{x:xmax,y:m*xmax+b}];
+}
+function trendDataset(pts,color){
+  const line=linearRegression(pts);
+  if(!line)return null;
+  return{
+    type:'line',
+    label:'Tendance',
+    data:line,
+    borderColor:color,
+    borderDash:[6,4],
+    borderWidth:1.5,
+    pointRadius:0,
+    fill:false,
+    tension:0,
+    parsing:false,
+  };
+}
+
+// ═══════════════════════════════════════════════════
 // TRENDING PAGE
 // ═══════════════════════════════════════════════════
 function renderTrending(){
@@ -1531,35 +1566,46 @@ function renderTrending(){
     backgroundColor:color,
     pointRadius:6,
     pointHoverRadius:8,
+    pointStyle:'circle',
   });
   // 1. Total Electricity vs RNS
   destroyChart('trend-elec-rns');
+  const pts1=pts.map(p=>({x:p.metrics.rns,y:p.metrics.totalElec}));
+  const trend1=trendDataset(pts1,'rgba(59,130,246,.5)');
   charts['trend-elec-rns']=new Chart(document.getElementById('chart-trend-elec-rns').getContext('2d'),{
     type:'scatter',
-    data:{datasets:[{...scatterDS(pts.map(p=>({x:p.metrics.rns,y:p.metrics.totalElec,label:periodLabel(p.period)||p.period})),'#3b82f6'),label:'Electricity vs RNS',
-      datalabels:{display:false}}]},
-    options:{...scatterOpts('RNS','Total Electricity (kWh)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, Elec=${Math.round(c.parsed.y)}`}}}}
+    data:{datasets:[
+      {...scatterDS(pts1,'#3b82f6'),label:'Total Electricity',datalabels:{display:false}},
+      ...(trend1?[trend1]:[])
+    ]},
+    options:{...scatterOpts('RNS','Total Electricity (kWh)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Tendance'?'':(`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, Elec=${Math.round(c.parsed.y)}`)}},annotation:{}}},
   });
   // 2. Cooling Load vs RNS
   destroyChart('trend-cooling-rns');
+  const pts2=pts.map(p=>({x:p.metrics.rns,y:p.billing.reduce((s,r)=>s+r.cooling,0)}));
+  const trend2=trendDataset(pts2,'rgba(6,182,212,.5)');
   charts['trend-cooling-rns']=new Chart(document.getElementById('chart-trend-cooling-rns').getContext('2d'),{
     type:'scatter',
-    data:{datasets:[{...scatterDS(pts.map(p=>({x:p.metrics.rns,y:p.billing.reduce((s,r)=>s+r.cooling,0)})),'#06b6d4')}]},
-    options:{...scatterOpts('RNS','Cooling Load (TRh)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, Cooling=${Math.round(c.parsed.y)}`}}}}
+    data:{datasets:[{...scatterDS(pts2,'#06b6d4'),label:'Cooling vs RNS'},...(trend2?[trend2]:[])]},
+    options:{...scatterOpts('RNS','Cooling Load (TRh)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Tendance'?'':`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, Cooling=${Math.round(c.parsed.y)}`}}}}
   });
   // 3. Energy Per Room vs RNS
   destroyChart('trend-epr-rns');
+  const pts3=pts.map(p=>({x:p.metrics.rns,y:p.metrics.rns>0?+(p.metrics.totalElec/p.metrics.rns).toFixed(2):0}));
+  const trend3=trendDataset(pts3,'rgba(139,92,246,.5)');
   charts['trend-epr-rns']=new Chart(document.getElementById('chart-trend-epr-rns').getContext('2d'),{
     type:'scatter',
-    data:{datasets:[{...scatterDS(pts.map(p=>({x:p.metrics.rns,y:p.metrics.rns>0?+(p.metrics.totalElec/p.metrics.rns).toFixed(2):0})),'#8b5cf6')}]},
-    options:{...scatterOpts('RNS','Energy Per Room (kWh/RNS)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, EPR=${c.parsed.y}`}}}}
+    data:{datasets:[{...scatterDS(pts3,'#8b5cf6'),label:'EPR vs RNS'},...(trend3?[trend3]:[])]},
+    options:{...scatterOpts('RNS','Energy Per Room (kWh/RNS)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Tendance'?'':`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, EPR=${c.parsed.y}`}}}}
   });
   // 4. Cooling Load vs Plant Efficiency
   destroyChart('trend-eff-cooling');
+  const pts4=pts.map(p=>{const b=p.billing;const tc=b.reduce((s,r)=>s+r.cooling,0);const tp=b.reduce((s,r)=>s+r.totalPlant,0);return{x:Math.round(tc),y:tc>0?+(tp/tc).toFixed(4):0};});
+  const trend4=trendDataset(pts4,'rgba(16,185,129,.5)');
   charts['trend-eff-cooling']=new Chart(document.getElementById('chart-trend-eff-cooling').getContext('2d'),{
     type:'scatter',
-    data:{datasets:[{...scatterDS(pts.map(p=>{const b=p.billing;const tc=b.reduce((s,r)=>s+r.cooling,0);const tp=b.reduce((s,r)=>s+r.totalPlant,0);return{x:Math.round(tc),y:tc>0?+(tp/tc).toFixed(4):0};}),'#10b981')}]},
-    options:{...scatterOpts('Cooling Load (TRh)','Plant Efficiency (kW/TR)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: Cooling=${c.parsed.x}, Eff=${c.parsed.y}`}}}}
+    data:{datasets:[{...scatterDS(pts4,'#10b981'),label:'Eff vs Cooling'},...(trend4?[trend4]:[])]},
+    options:{...scatterOpts('Cooling Load (TRh)','Plant Efficiency (kW/TR)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Tendance'?'':`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: Cooling=${c.parsed.x}, Eff=${c.parsed.y}`}}}}
   });
 }
 
