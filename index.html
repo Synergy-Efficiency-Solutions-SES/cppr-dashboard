@@ -874,16 +874,19 @@ function renderDetailed(){
   const v2full=p2data.length?effBreakdownTotal(p2data):null;
   const kpiEl=document.getElementById('eff-shift-kpis');
   if(kpiEl&&v1full&&v2full){
-    const totalV1=v1full.reduce((s,v)=>s+v,0);
-    const totalV2=v2full.reduce((s,v)=>s+v,0);
+    // Power BI formula:
+    // Efficiency Increase = ABS(thisEff) - lastEff
+    // % Total = Efficiency Increase / thisEff
+    // Same logic per component: diff = this[i] - last[i], pct = diff / this[i]
+    const totalV2=v2full.reduce((s,v)=>s+v,0); // this month total eff
+    const totalV1=v1full.reduce((s,v)=>s+v,0); // last month total eff
     const totalDiff=totalV2-totalV1;
-    const totalPct=totalV1>0?(totalDiff/totalV1*100):0;
+    const totalPct=totalV2>0?(totalDiff/totalV2*100):0; // divide by THIS month
     const colors=['#1e3a6e','#3b82f6','#06b6d4','#10b981','#f59e0b'];
     kpiEl.innerHTML=keys.map((k,i)=>{
       const diff=v2full[i]-v1full[i];
-      const pct=v1full[i]>0?(diff/v1full[i]*100):0;
+      const pct=v2full[i]>0?(diff/v2full[i]*100):0; // divide by THIS month
       const sign=diff>=0?'+':'';
-      const col=diff<=0?'var(--good)':'var(--bad)';
       return `<div style="background:${colors[i]};border-radius:8px;padding:10px 8px;text-align:center">
         <div style="font-size:10px;font-weight:700;color:#fff;text-transform:uppercase">${keyLabels[i]}<br>kW/TR</div>
         <div style="font-size:13px;font-weight:800;color:#fff;margin-top:4px">${sign}${pct.toFixed(2)}%</div>
