@@ -7,123 +7,146 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0f1117; --surface: #181c27; --surface2: #1e2333;
-    --border: #2a3050; --accent: #3b82f6; --accent2: #06b6d4;
-    --accent3: #8b5cf6; --good: #10b981; --warn: #f59e0b; --bad: #ef4444;
-    --text: #e2e8f0; --muted: #64748b; --label: #94a3b8;
-  }
-  body { font-family: 'Inter','Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#181c27;--surface2:#1e2333;--border:#2a3050;
+  --accent:#3b82f6;--accent2:#06b6d4;--accent3:#8b5cf6;
+  --good:#10b981;--warn:#f59e0b;--bad:#ef4444;
+  --text:#e2e8f0;--muted:#64748b;--label:#94a3b8;
+}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 
-  header {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:16px 32px; border-bottom:1px solid var(--border);
-    background:var(--surface); position:sticky; top:0; z-index:100;
-  }
-  .logo { display:flex; align-items:center; gap:10px; }
-  .logo-icon { width:32px; height:32px; background:linear-gradient(135deg,var(--accent),var(--accent3)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
-  .logo-text { font-size:15px; font-weight:700; letter-spacing:.5px; }
-  .logo-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:200}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--accent3));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.logo-text{font-size:15px;font-weight:700}
+.logo-sub{font-size:11px;color:var(--muted)}
+.header-right{display:flex;align-items:center;gap:10px}
 
-  .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:8px; border:none; cursor:pointer; font-size:13px; font-weight:600; transition:all .15s; }
-  .btn-primary { background:var(--accent); color:#fff; }
-  .btn-primary:hover { background:#2563eb; }
-  .btn-secondary { background:var(--surface2); color:var(--label); border:1px solid var(--border); }
-  .btn-secondary:hover { border-color:var(--accent); color:var(--text); }
-  .btn-sm { padding:6px 14px; font-size:12px; }
+/* TABS */
+.page-tabs{display:flex;gap:2px;background:var(--surface2);padding:4px;border-radius:10px}
+.page-tab{padding:6px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);border:none;background:none;transition:all .15s;white-space:nowrap}
+.page-tab.active{background:var(--accent);color:#fff}
+.page-tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.05)}
 
-  /* DROP ZONE */
-  #drop-zone {
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    min-height:calc(100vh - 65px); gap:20px; padding:40px;
-  }
-  .drop-area {
-    display:grid; grid-template-columns:1fr 1fr; gap:16px;
-    width:100%; max-width:720px;
-  }
-  .drop-box {
-    border:2px dashed var(--border); border-radius:20px; padding:40px 28px;
-    text-align:center; cursor:pointer; transition:all .2s;
-    background:var(--surface);
-  }
-  .drop-box:hover, .drop-box.drag-over { border-color:var(--accent); background:rgba(59,130,246,.06); }
-  .drop-icon { font-size:40px; margin-bottom:12px; }
-  .drop-title { font-size:16px; font-weight:700; margin-bottom:6px; }
-  .drop-hint { font-size:12px; color:var(--muted); line-height:1.6; }
-  .drop-badge { display:inline-block; margin-top:10px; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
-  .badge-blue { background:rgba(59,130,246,.15); color:var(--accent); }
-  .badge-purple { background:rgba(139,92,246,.15); color:var(--accent3); }
+/* FILTERS BAR */
+.filters-bar{display:flex;align-items:center;gap:10px;padding:10px 28px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.filters-bar select{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer}
+.filters-bar select:focus{outline:none;border-color:var(--accent)}
+.filters-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 
-  #file-input { display:none; }
-  #folder-input { display:none; }
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#2563eb}
+.btn-ghost{background:var(--surface2);color:var(--label);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--text)}
 
-  .file-list { display:flex; flex-direction:column; gap:6px; width:100%; max-width:720px; max-height:260px; overflow-y:auto; }
-  .file-item { display:flex; align-items:center; justify-content:space-between; padding:9px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; font-size:12px; }
-  .file-item .name { color:var(--text); font-weight:500; }
-  .file-item .meta { color:var(--muted); font-size:10px; margin-top:1px; }
-  .file-item-left { display:flex; align-items:center; gap:10px; }
-  .client-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+/* DROP ZONE */
+#drop-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 65px);gap:20px;padding:40px}
+.drop-area{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:700px}
+.drop-box{border:2px dashed var(--border);border-radius:18px;padding:36px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface)}
+.drop-box:hover,.drop-box.drag-over{border-color:var(--accent);background:rgba(59,130,246,.06)}
+.drop-icon{font-size:36px;margin-bottom:10px}
+.drop-title{font-size:15px;font-weight:700;margin-bottom:6px}
+.drop-hint{font-size:12px;color:var(--muted);line-height:1.6}
+.drop-badge{display:inline-block;margin-top:8px;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase}
+.badge-blue{background:rgba(59,130,246,.15);color:var(--accent)}
+.badge-purple{background:rgba(139,92,246,.15);color:var(--accent3)}
+#file-input,#folder-input{display:none}
+.file-list{display:flex;flex-direction:column;gap:5px;width:100%;max-width:700px;max-height:240px;overflow-y:auto}
+.file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;font-size:12px}
+.file-item-left{display:flex;align-items:center;gap:8px}
+.client-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
-  /* SCAN STATUS */
-  #scan-status { font-size:13px; color:var(--muted); }
-  #scan-status .count { color:var(--accent); font-weight:700; }
+/* DASHBOARD */
+#dashboard{display:none}
 
-  /* DASHBOARD */
-  #dashboard { display:none; }
-  .dash-header {
-    padding:18px 32px; border-bottom:1px solid var(--border);
-    background:var(--surface); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
-  }
-  .dash-title { font-size:18px; font-weight:700; }
-  .dash-period { font-size:12px; color:var(--muted); }
-  .filters { display:flex; gap:10px; flex-wrap:wrap; }
-  select { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:7px 12px; font-size:13px; cursor:pointer; }
-  select:focus { outline:none; border-color:var(--accent); }
+/* PAGES */
+.page{display:none;padding:20px 28px}
+.page.active{display:block}
 
-  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1px; background:var(--border); border-bottom:1px solid var(--border); }
-  .kpi { background:var(--surface); padding:22px 26px; display:flex; flex-direction:column; gap:4px; }
-  .kpi-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; }
-  .kpi-value { font-size:26px; font-weight:800; letter-spacing:-.5px; }
-  .kpi-unit { font-size:11px; color:var(--muted); }
-  .blue{color:var(--accent);} .cyan{color:var(--accent2);} .purple{color:var(--accent3);} .green{color:var(--good);}
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.kpi{background:var(--surface);padding:18px 20px}
+.kpi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px}
+.kpi-value{font-size:24px;font-weight:800;letter-spacing:-.5px}
+.kpi-unit{font-size:11px;color:var(--muted);margin-top:2px}
+.kpi-sub{font-size:11px;margin-top:3px}
+.blue{color:var(--accent)}.cyan{color:var(--accent2)}.purple{color:var(--accent3)}.green{color:var(--good)}.warn{color:var(--warn)}.bad{color:var(--bad)}
 
-  .charts-area { padding:24px 32px; display:flex; flex-direction:column; gap:20px; }
-  .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-  .chart-row.full { grid-template-columns:1fr; }
-  @media(max-width:900px){.chart-row{grid-template-columns:1fr;}}
-  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
-  .card-head { padding:14px 18px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
-  .card-title { font-size:13px; font-weight:600; }
-  .card-subtitle { font-size:11px; color:var(--muted); }
-  .card-body { padding:16px 18px; }
-  .chart-wrap { position:relative; height:220px; }
-  .chart-wrap-tall { position:relative; height:270px; }
+/* ASHRAE GAUGE */
+.ashrae-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px}
+.ashrae-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px}
+.ashrae-bar{position:relative;height:28px;border-radius:6px;overflow:hidden;display:flex}
+.ashrae-seg{flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+.ashrae-needle-wrap{position:relative;height:16px;margin-top:4px}
+.ashrae-needle{position:absolute;width:2px;height:16px;background:var(--text);border-radius:1px;transform:translateX(-50%);transition:left .6s}
+.ashrae-needle::before{content:'▼';position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text)}
+.ashrae-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px}
+.ashrae-value{font-size:20px;font-weight:800;margin-top:6px}
+.ashrae-zone{font-size:12px;font-weight:600;margin-top:2px}
 
-  table { width:100%; border-collapse:collapse; font-size:12px; }
-  th { text-align:left; padding:9px 13px; font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); border-bottom:1px solid var(--border); background:var(--surface2); position:sticky; top:0; }
-  td { padding:8px 13px; border-bottom:1px solid rgba(42,48,80,.5); }
-  tr:hover td { background:rgba(59,130,246,.04); }
-  .eff-good{color:var(--good);font-weight:600;} .eff-mid{color:var(--warn);font-weight:600;} .eff-bad{color:var(--bad);font-weight:600;}
-  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
-  .tag-blue{background:rgba(59,130,246,.15);color:var(--accent);} .tag-green{background:rgba(16,185,129,.15);color:var(--good);}
-  .empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+/* CHART CARDS */
+.chart-grid{display:grid;gap:16px}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-3{grid-template-columns:1fr 1fr 1fr}
+.grid-1-2{grid-template-columns:1fr 2fr}
+.grid-2-1{grid-template-columns:2fr 1fr}
+@media(max-width:900px){.grid-2,.grid-3,.grid-1-2,.grid-2-1{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.card-head{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:12px;font-weight:700}
+.card-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.card-body{padding:14px 16px}
+.chart-h180{position:relative;height:180px}
+.chart-h220{position:relative;height:220px}
+.chart-h260{position:relative;height:260px}
+.chart-h300{position:relative;height:300px}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase}
+.tag-blue{background:rgba(59,130,246,.15);color:var(--accent)}
+.tag-green{background:rgba(16,185,129,.15);color:var(--good)}
+.tag-purple{background:rgba(139,92,246,.15);color:var(--accent3)}
+.tag-warn{background:rgba(245,158,11,.15);color:var(--warn)}
 
-  #loader { display:none; position:fixed; inset:0; background:rgba(15,17,23,.85); z-index:999; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
-  #loader.show{display:flex;}
-  .spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
-  @keyframes spin{to{transform:rotate(360deg);}}
-  .loader-text{font-size:13px;color:var(--muted);}
+/* TABLE */
+.table-wrap{overflow-x:auto;max-height:320px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{text-align:left;padding:8px 12px;font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface2);position:sticky;top:0}
+td{padding:7px 12px;border-bottom:1px solid rgba(42,48,80,.4)}
+tr:hover td{background:rgba(59,130,246,.04)}
+.eff-good{color:var(--good);font-weight:600}.eff-mid{color:var(--warn);font-weight:600}.eff-bad{color:var(--bad);font-weight:600}
 
-  .progress-bar { width:280px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
-  .progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .3s; }
+/* LOADER */
+#loader{display:none;position:fixed;inset:0;background:rgba(15,17,23,.88);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#loader.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-text{font-size:13px;color:var(--muted)}
+.progress-bar{width:260px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+
+/* SECTION TITLES */
+.section-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px;margin-top:20px}
+.section-title:first-child{margin-top:0}
+
+/* YEARLY TREND */
+.trend-up{color:var(--bad)}.trend-down{color:var(--good)}.trend-neutral{color:var(--muted)}
+
+/* PART LOAD */
+.part-load-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}
+.pl-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.pl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
 
 <div id="loader">
   <div class="spinner"></div>
-  <div class="loader-text" id="loader-text">Lecture des fichiers...</div>
+  <div class="loader-text" id="loader-text">Chargement...</div>
   <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
 </div>
 
@@ -135,13 +158,20 @@
       <div class="logo-sub">Chiller Plant Performance Report</div>
     </div>
   </div>
-  <button class="btn btn-secondary btn-sm" onclick="resetDashboard()">➕ Changer de données</button>
+  <div class="header-right">
+    <div class="page-tabs" id="page-tabs" style="display:none">
+      <button class="page-tab active" onclick="showPage('monthly')">Monthly Overview</button>
+      <button class="page-tab" onclick="showPage('yearly')">Yearly Overview</button>
+      <button class="page-tab" onclick="showPage('detailed')">Chiller Plant</button>
+      <button class="page-tab" onclick="showPage('raw')">Daily Data</button>
+    </div>
+    <button class="btn btn-ghost" onclick="resetDashboard()" style="font-size:12px">➕ Données</button>
+  </div>
 </header>
 
 <!-- DROP ZONE -->
 <div id="drop-zone">
   <div class="drop-area">
-    <!-- Dossier client -->
     <div class="drop-box" id="drop-folder"
          ondragover="handleDragOver(event,'drop-folder')"
          ondragleave="handleDragLeave('drop-folder')"
@@ -152,7 +182,6 @@
       <div class="drop-hint">Glissez un dossier entier<br>(ex: <strong>Mustika/</strong>)<br>Tous les Excel seront lus</div>
       <div class="drop-badge badge-purple">Dossier</div>
     </div>
-    <!-- Fichiers individuels -->
     <div class="drop-box" id="drop-files"
          ondragover="handleDragOver(event,'drop-files')"
          ondragleave="handleDragLeave('drop-files')"
@@ -164,70 +193,149 @@
       <div class="drop-badge badge-blue">Fichiers</div>
     </div>
   </div>
-
   <input type="file" id="file-input" accept=".xlsx,.xls" multiple onchange="addFilesFromInput(this.files)">
   <input type="file" id="folder-input" webkitdirectory multiple accept=".xlsx,.xls" onchange="addFilesFromInput(this.files)">
-
-  <div id="scan-status" style="display:none"></div>
+  <div id="scan-status" style="display:none;font-size:13px;color:var(--muted)"></div>
   <div class="file-list" id="file-list"></div>
-  <button class="btn btn-primary" id="load-btn" style="display:none" onclick="buildDashboard()">
-    ▶ Afficher le dashboard
-  </button>
+  <button class="btn btn-primary" id="load-btn" style="display:none" onclick="buildDashboard()">▶ Afficher le dashboard</button>
 </div>
 
 <!-- DASHBOARD -->
 <div id="dashboard">
-  <div class="dash-header">
-    <div>
-      <div class="dash-title" id="dash-title">Dashboard CPPR</div>
-      <div class="dash-period" id="dash-period"></div>
-    </div>
-    <div class="filters">
-      <select id="sel-client" onchange="filterDashboard()"><option value="">Tous les clients</option></select>
-      <select id="sel-month" onchange="filterDashboard()"><option value="">Tous les mois</option></select>
-    </div>
+  <!-- FILTERS BAR -->
+  <div class="filters-bar">
+    <span class="filters-label">Filtres :</span>
+    <select id="sel-client" onchange="filterDashboard()"><option value="">Tous les clients</option></select>
+    <select id="sel-month" onchange="filterDashboard()"><option value="">Tous les mois</option></select>
+    <span id="filter-info" style="font-size:11px;color:var(--muted);margin-left:auto"></span>
   </div>
 
-  <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-label">Cooling Load Total</div><div class="kpi-value blue" id="kpi-cooling">—</div><div class="kpi-unit">TRh</div></div>
-    <div class="kpi"><div class="kpi-label">Consommation électrique</div><div class="kpi-value cyan" id="kpi-power">—</div><div class="kpi-unit">kWh</div></div>
-    <div class="kpi"><div class="kpi-label">Efficacité moyenne</div><div class="kpi-value purple" id="kpi-eff">—</div><div class="kpi-unit">kW/TR</div></div>
-    <div class="kpi"><div class="kpi-label">Jours de données</div><div class="kpi-value green" id="kpi-days">—</div><div class="kpi-unit">jours</div></div>
-    <div class="kpi"><div class="kpi-label">RNS</div><div class="kpi-value" id="kpi-rns">—</div><div class="kpi-unit">/ Max <span id="kpi-rns-max">—</span></div></div>
-    <div class="kpi"><div class="kpi-label">Total Électricité</div><div class="kpi-value" id="kpi-elec">—</div><div class="kpi-unit">kWh (Site Metrics)</div></div>
-  </div>
+  <!-- PAGE: MONTHLY OVERVIEW -->
+  <div class="page active" id="page-monthly">
+    <div class="section-title">Cooling as a Service — Project Parameters</div>
+    <div class="kpi-grid" id="kpi-monthly"></div>
 
-  <div class="charts-area">
-    <div class="chart-row full">
+    <!-- ASHRAE + Weekly chart -->
+    <div class="chart-grid grid-1-2" style="margin-bottom:16px">
+      <div>
+        <div class="ashrae-wrap">
+          <div class="ashrae-title">ASHRAE Chiller Plant Efficiency Benchmark</div>
+          <div class="ashrae-bar">
+            <div class="ashrae-seg" style="background:#1a6b3a">EXCELLENT</div>
+            <div class="ashrae-seg" style="background:#2d8a4e">GOOD</div>
+            <div class="ashrae-seg" style="background:#d97706">FAIR</div>
+            <div class="ashrae-seg" style="background:#dc2626">NEED IMP.</div>
+          </div>
+          <div class="ashrae-needle-wrap"><div class="ashrae-needle" id="ashrae-needle" style="left:50%"></div></div>
+          <div class="ashrae-labels"><span>0.5</span><span>0.7</span><span>0.9</span><span>1.1</span><span>1.2</span></div>
+          <div class="ashrae-value blue" id="ashrae-val">—</div>
+          <div class="ashrae-zone" id="ashrae-zone"></div>
+        </div>
+        <!-- Hotel KPIs -->
+        <div class="kpi-grid" id="kpi-hotel" style="margin-bottom:0"></div>
+      </div>
       <div class="card">
         <div class="card-head">
-          <div><div class="card-title">Cooling Load & Consommation — Évolution journalière</div><div class="card-subtitle">TRh vs kWh chiller plant</div></div>
-          <span class="tag tag-blue">Billing Data</span>
+          <div><div class="card-title">Tonnage of Cooling & Plant Efficiency — Weekly</div><div class="card-sub">Cooling Load (TR) + Plant Eff (kW/TR) + Chiller Eff (kW/TR)</div></div>
+          <span class="tag tag-blue">Weekly</span>
         </div>
-        <div class="card-body"><div class="chart-wrap-tall"><canvas id="chart-load"></canvas></div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-weekly"></canvas></div></div>
       </div>
     </div>
-    <div class="chart-row">
+
+    <!-- Energy Share pies -->
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
       <div class="card">
-        <div class="card-head"><div><div class="card-title">Efficacité (kW/TR)</div><div class="card-subtitle">Évolution journalière</div></div></div>
-        <div class="card-body"><div class="chart-wrap"><canvas id="chart-eff"></canvas></div></div>
+        <div class="card-head"><div class="card-title">Energy Share</div><div class="card-sub">Chiller Plant vs Total Hotel</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-energy-share"></canvas></div></div>
       </div>
       <div class="card">
-        <div class="card-head"><div><div class="card-title">Répartition de la puissance</div><div class="card-subtitle">Chiller, CHWP, CWP, CT, Aux</div></div></div>
-        <div class="card-body"><div class="chart-wrap"><canvas id="chart-breakdown"></canvas></div></div>
+        <div class="card-head"><div class="card-title">Chiller Plant Energy Share</div><div class="card-sub">Répartition interne</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-plant-share"></canvas></div></div>
       </div>
+    </div>
+
+    <!-- Daily chart -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <div><div class="card-title">Cooling Load & Consommation — Évolution journalière</div><div class="card-sub">TRh vs kWh chiller plant</div></div>
+        <span class="tag tag-blue">Billing Data</span>
+      </div>
+      <div class="card-body"><div class="chart-h220"><canvas id="chart-load"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- PAGE: YEARLY OVERVIEW -->
+  <div class="page" id="page-yearly">
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div>
+        <div class="section-title">Accumulated Project Stats</div>
+        <div class="kpi-grid" id="kpi-yearly"></div>
+      </div>
+      <div>
+        <div class="section-title">Yearly Performance Trends</div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">RNS & Total Electricity par mois</div></div>
+          <div class="card-body"><div class="chart-h180"><canvas id="chart-yearly-rns"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head"><div class="card-title">Cooling Load (TRh) + Plant Efficiency + Chiller Efficiency — par mois</div></div>
+      <div class="card-body"><div class="chart-h220"><canvas id="chart-yearly-load"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head"><div class="card-title">Cooling per Room & Energy per Room — par mois</div></div>
+      <div class="card-body"><div class="chart-h180"><canvas id="chart-yearly-room"></canvas></div></div>
     </div>
     <div class="card">
+      <div class="card-head"><div class="card-title">General Comments</div></div>
+      <div class="card-body">
+        <div id="comments-list" style="font-size:12px;color:var(--label);line-height:1.8"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: CHILLER PLANT DETAILED -->
+  <div class="page" id="page-detailed">
+    <div class="section-title">Efficiency Profile — This Month vs Last Month</div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Efficiency Comparison vs Last Month</div><div class="card-sub">Chiller + CHWP + CWP + CT + Aux (kW/TR)</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-eff-compare"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Efficacité journalière (kW/TR)</div><div class="card-sub">Évolution sur le mois</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-eff-daily"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Chiller Plant Part Load Curve</div><div class="card-sub">Occurrence % + Efficiency kW/TR vs Part Load</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-partload"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">CH 1 Part Load Curve</div><div class="card-sub">Occurrence % + Efficiency kW/TR</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-partload-ch1"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: DAILY DATA -->
+  <div class="page" id="page-raw">
+    <div class="section-title">Détail journalier — Billing Data</div>
+    <div class="card">
       <div class="card-head">
-        <div><div class="card-title">Détail journalier</div><div class="card-subtitle">Billing Data</div></div>
+        <div class="card-title">Toutes les données</div>
         <span class="tag tag-green" id="table-count"></span>
       </div>
       <div class="card-body" style="padding:0">
-        <div style="max-height:340px;overflow-y:auto">
+        <div class="table-wrap">
           <table><thead><tr>
-            <th>Date</th><th>Client</th><th>Cooling Load (TRh)</th>
-            <th>Chiller (kWh)</th><th>CHWP (kWh)</th><th>CWP (kWh)</th>
-            <th>CT (kWh)</th><th>Aux (kWh)</th><th>Total Plant (kWh)</th><th>Eff (kW/TR)</th>
+            <th>Date</th><th>Client</th><th>Mois</th>
+            <th>Cooling Load (TRh)</th><th>Chiller (kWh)</th><th>CHWP (kWh)</th>
+            <th>CWP (kWh)</th><th>CT (kWh)</th><th>Aux (kWh)</th>
+            <th>Total Plant (kWh)</th><th>Eff (kW/TR)</th>
           </tr></thead><tbody id="table-body"></tbody></table>
         </div>
       </div>
@@ -236,449 +344,580 @@
 </div>
 
 <script>
-// ── STATE ──────────────────────────────────────
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
 let allData = [];
-let filteredRows = [];
+let filteredData = [];
 let charts = {};
-const pendingFiles = []; // { file, client }
-const CLIENT_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#84cc16'];
+let currentPage = 'monthly';
+const pendingFiles = [];
+const CLIENT_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
 const clientColorMap = {};
 let colorIdx = 0;
+function clientColor(n){if(!clientColorMap[n])clientColorMap[n]=CLIENT_COLORS[colorIdx++%CLIENT_COLORS.length];return clientColorMap[n]}
 
-function clientColor(name) {
-  if (!clientColorMap[name]) clientColorMap[name] = CLIENT_COLORS[colorIdx++ % CLIENT_COLORS.length];
-  return clientColorMap[name];
+// ═══════════════════════════════════════════════════
+// PAGE NAVIGATION
+// ═══════════════════════════════════════════════════
+function showPage(id){
+  currentPage = id;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderCurrentPage();
 }
 
-// ── DRAG & DROP ────────────────────────────────
-function handleDragOver(e, id) {
-  e.preventDefault(); e.stopPropagation();
-  document.getElementById(id).classList.add('drag-over');
-}
-function handleDragLeave(id) {
-  document.getElementById(id).classList.remove('drag-over');
-}
+// ═══════════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════════
+document.getElementById('drop-folder').addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();document.getElementById('drop-folder').classList.add('drag-over')});
+document.getElementById('drop-folder').addEventListener('dragleave',()=>document.getElementById('drop-folder').classList.remove('drag-over'));
+document.getElementById('drop-folder').addEventListener('drop',handleDrop);
+document.getElementById('drop-files').addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();document.getElementById('drop-files').classList.add('drag-over')});
+document.getElementById('drop-files').addEventListener('dragleave',()=>document.getElementById('drop-files').classList.remove('drag-over')  );
+document.getElementById('drop-files').addEventListener('drop',handleDropFiles);
 
-// DROP ON FOLDER BOX — reads folder recursively
-function handleDrop(e) {
-  e.preventDefault(); e.stopPropagation();
+function handleDragOver(e,id){e.preventDefault();e.stopPropagation();document.getElementById(id).classList.add('drag-over')}
+function handleDragLeave(id){document.getElementById(id).classList.remove('drag-over')}
+
+async function handleDrop(e){
+  e.preventDefault();e.stopPropagation();
   document.getElementById('drop-folder').classList.remove('drag-over');
-  const items = [...e.dataTransfer.items];
-  const entries = items.map(i => i.webkitGetAsEntry ? i.webkitGetAsEntry() : null).filter(Boolean);
-  if (!entries.length) return;
-  scanEntries(entries);
-}
-
-// DROP ON FILES BOX — only .xlsx files
-function handleDropFiles(e) {
-  e.preventDefault(); e.stopPropagation();
-  document.getElementById('drop-files').classList.remove('drag-over');
-  const files = [...e.dataTransfer.files].filter(f => f.name.match(/\.xlsx?$/i));
-  files.forEach(f => addFile(f, guessClientFromFilename(f.name)));
+  const items=[...e.dataTransfer.items];
+  const entries=items.map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
+  if(!entries.length)return;
+  const ss=document.getElementById('scan-status');
+  ss.style.display='block';ss.innerHTML='🔍 Scan...';
+  const all=[];
+  for(const en of entries)await collectFromEntry(en,all,null);
+  const xlsx=all.filter(({file})=>file.name.match(/\.xlsx?$/i));
+  if(!xlsx.length){ss.innerHTML='⚠️ Aucun fichier Excel trouvé.';return}
+  xlsx.forEach(({file,client})=>addFile(file,client));
   updateUI();
 }
-
-function addFilesFromInput(fileList) {
-  const files = [...fileList].filter(f => f.name.match(/\.xlsx?$/i));
-  files.forEach(f => {
-    // webkitRelativePath examples:
-    //   "Mustika/2025 04 - CPPR - Mustika - v1.xlsx"       → client = "Mustika"
-    //   "Client Data/Mustika/2025 04 - CPPR - ....xlsx"    → client = "Mustika"
-    //   "2025 04 - CPPR - Mustika - v1.xlsx"               → no folder
-    const rel = f.webkitRelativePath || '';
-    const parts = rel.split('/').filter(Boolean);
-    // The folder immediately containing the file = parts[parts.length - 2]
-    const client = parts.length >= 2 ? parts[parts.length - 2] : 'Inconnu';
-    addFile(f, client);
+function handleDropFiles(e){
+  e.preventDefault();e.stopPropagation();
+  document.getElementById('drop-files').classList.remove('drag-over');
+  [...e.dataTransfer.files].filter(f=>f.name.match(/\.xlsx?$/i)).forEach(f=>addFile(f,'Inconnu'));
+  updateUI();
+}
+function addFilesFromInput(fl){
+  [...fl].filter(f=>f.name.match(/\.xlsx?$/i)).forEach(f=>{
+    const rel=f.webkitRelativePath||'';
+    const parts=rel.split('/').filter(Boolean);
+    const client=parts.length>=2?parts[parts.length-2]:'Inconnu';
+    addFile(f,client);
   });
   updateUI();
 }
-
-// Recursively scan dropped entries.
-// Rule: the folder that directly contains .xlsx files = client name.
-// Works whether you drop "Client Data/" (2 levels) or "Mustika/" (1 level).
-async function scanEntries(entries) {
-  const status = document.getElementById('scan-status');
-  status.style.display = 'block';
-  status.innerHTML = '🔍 Scan en cours...';
-  const allFiles = [];
-  for (const entry of entries) {
-    await collectFromEntry(entry, allFiles, null);
-  }
-  const xlsx = allFiles.filter(({file}) => file.name.match(/\.xlsx?$/i));
-  if (!xlsx.length) {
-    status.innerHTML = '⚠️ Aucun fichier Excel trouvé dans ce dossier.';
-    return;
-  }
-  xlsx.forEach(({file, client}) => addFile(file, client));
-  updateUI();
-}
-
-async function readAllEntries(reader) {
-  let all = [];
-  while (true) {
-    const batch = await new Promise((res, rej) => reader.readEntries(res, rej));
-    if (!batch.length) break;
-    all = all.concat(batch);
-  }
+async function readAllEntries(reader){
+  let all=[];
+  while(true){const b=await new Promise((r,j)=>reader.readEntries(r,j));if(!b.length)break;all=all.concat(b)}
   return all;
 }
-
-async function collectFromEntry(entry, result, inheritedClient) {
-  if (entry.isFile) {
-    const file = await new Promise((res, rej) => entry.file(res, rej));
-    if (file.name.match(/\.xlsx?$/i)) {
-      // inheritedClient = name of the folder that contains this file
-      result.push({ file, client: inheritedClient || 'Inconnu' });
-    }
-  } else if (entry.isDirectory) {
-    const subEntries = await readAllEntries(entry.createReader());
-    const hasExcel = subEntries.some(s => s.isFile && s.name.match(/\.xlsx?$/i));
-    for (const sub of subEntries) {
-      if (sub.isFile) {
-        // This directory directly contains Excel files → it is the client folder
-        if (hasExcel) {
-          await collectFromEntry(sub, result, entry.name);
-        }
-      } else {
-        // Sub-directory: go deeper, pass along client if already known
-        await collectFromEntry(sub, result, inheritedClient);
-      }
-    }
+async function collectFromEntry(entry,result,inheritedClient){
+  if(entry.isFile){
+    const file=await new Promise((r,j)=>entry.file(r,j));
+    if(file.name.match(/\.xlsx?$/i))result.push({file,client:inheritedClient||'Inconnu'});
+  }else if(entry.isDirectory){
+    const subs=await readAllEntries(entry.createReader());
+    const hasXls=subs.some(s=>s.isFile&&s.name.match(/\.xlsx?$/i));
+    if(hasXls){for(const s of subs)await collectFromEntry(s,result,entry.name)}
+    else{for(const s of subs)await collectFromEntry(s,result,inheritedClient)}
   }
 }
-
-function guessClientFromPath(relPath, filename) {
-  // "Client Data/Mustika/file.xlsx" → "Mustika" (second segment)
-  // "Mustika/file.xlsx" → "Mustika" (first segment)
-  if (relPath && relPath.includes('/')) {
-    const parts = relPath.split('/');
-    // If there are 3+ parts, the client is the second-to-last folder
-    return parts.length >= 3 ? parts[parts.length - 2] : parts[0];
-  }
-  return guessClientFromFilename(filename);
+function addFile(file,client){
+  if(pendingFiles.find(p=>p.file.name===file.name&&p.client===client))return;
+  pendingFiles.push({file,client});
 }
-function guessClientFromFilename(name) {
-  // 2025_04_-_CPPR_-_Mustika_-_v1.xlsx → Mustika
-  const m = name.match(/cppr[_\-]+([a-zA-Z][^_\-\.]+)/i);
-  if (m) return m[1];
-  const parts = name.replace(/\.xlsx?$/i,'').split(/[_\-]+/);
-  return parts.find(p => p.length > 2 && isNaN(p)) || 'Inconnu';
-}
-function guessPeriodFromFilename(name) {
-  // Handles spaces, underscores, dashes: "2025 04 - CPPR", "2025_04_-_CPPR"
-  const m = name.match(/(\d{4})[\s_\-]+(\d{2})/);
-  if (m) {
-    const a = +m[1], b = +m[2];
-    if (a > 1900 && b >= 1 && b <= 12) return m[1] + '-' + m[2].padStart(2,'0');
-  }
-  const m2 = name.match(/(\d{2})[\s_\-]+(\d{4})/);
-  if (m2) {
-    const a = +m2[1], b = +m2[2];
-    if (b > 1900 && a >= 1 && a <= 12) return m2[2] + '-' + m2[1].padStart(2,'0');
-  }
-  return null;
-}
-
-function periodLabel(period) {
-  if (!period || period === '—') return null;
-  const [y, mo] = period.split('-');
-  const months = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
-  const idx = parseInt(mo,10) - 1;
-  return (months[idx] || mo) + ' ' + y;
-}
-
-function addFile(file, client) {
-  if (pendingFiles.find(p => p.file.name === file.name && p.client === client)) return;
-  pendingFiles.push({ file, client });
-}
-
-function updateUI() {
-  const status = document.getElementById('scan-status');
-  status.style.display = 'block';
-  status.innerHTML = `<span class="count">${pendingFiles.length}</span> fichier(s) trouvé(s)`;
-
-  const fileList = document.getElementById('file-list');
-  fileList.innerHTML = '';
-  pendingFiles.forEach(({file, client}) => {
-    const color = clientColor(client);
-    const period = guessPeriodFromFilename(file.name);
-    const el = document.createElement('div');
-    el.className = 'file-item';
-    el.innerHTML = `
-      <div class="file-item-left">
-        <div class="client-dot" style="background:${color}"></div>
-        <div>
-          <div class="name">${file.name}</div>
-          <div class="meta">👤 ${client}${period ? '  📅 ' + (periodLabel(period)||period) : ''}</div>
-        </div>
-      </div>
-      <span style="color:var(--good);font-size:11px;">✓</span>
-    `;
-    fileList.appendChild(el);
+function updateUI(){
+  const ss=document.getElementById('scan-status');
+  ss.style.display='block';
+  ss.innerHTML=`<span style="color:var(--accent);font-weight:700">${pendingFiles.length}</span> fichier(s)`;
+  const fl=document.getElementById('file-list');fl.innerHTML='';
+  pendingFiles.forEach(({file,client})=>{
+    const color=clientColor(client);
+    const el=document.createElement('div');el.className='file-item';
+    el.innerHTML=`<div class="file-item-left"><div class="client-dot" style="background:${color}"></div><div><div style="font-weight:500">${file.name}</div><div style="color:var(--muted);font-size:10px">👤 ${client}</div></div></div><span style="color:var(--good);font-size:11px">✓</span>`;
+    fl.appendChild(el);
   });
-  document.getElementById('load-btn').style.display = pendingFiles.length ? 'inline-flex' : 'none';
+  document.getElementById('load-btn').style.display=pendingFiles.length?'inline-flex':'none';
 }
 
-// ── EXCEL PARSING ──────────────────────────────
-function excelSerialToDate(serial) {
-  if (!serial || isNaN(serial)) return null;
-  return new Date(Math.round((serial - 25569) * 86400 * 1000));
-}
-function fmtDate(serial) {
-  const d = excelSerialToDate(serial);
-  if (!d) return '—';
-  return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
-}
-function fmtDateShort(serial) {
-  const d = excelSerialToDate(serial);
-  if (!d) return '';
-  return d.getDate() + '/' + (d.getMonth()+1);
-}
-function fmtNum(n, dec=0) {
-  if (n == null || isNaN(n)) return '—';
-  return n.toLocaleString('fr-FR', { minimumFractionDigits:dec, maximumFractionDigits:dec });
-}
-function fmtBig(n) {
-  if (n == null || isNaN(n)) return '—';
-  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return (n/1e3).toFixed(1) + 'k';
-  return fmtNum(n, 1);
-}
+// ═══════════════════════════════════════════════════
+// EXCEL PARSING
+// ═══════════════════════════════════════════════════
+function serial2date(s){if(!s||isNaN(s))return null;return new Date(Math.round((s-25569)*86400*1000))}
+function fmtDate(s){const d=serial2date(s);if(!d)return'—';return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+function fmtShort(s){const d=serial2date(s);if(!d)return'';return d.getDate()+'/'+(d.getMonth()+1)}
+function fmtNum(n,dec=0){if(n==null||isNaN(n))return'—';return n.toLocaleString('fr-FR',{minimumFractionDigits:dec,maximumFractionDigits:dec})}
+function fmtBig(n){if(n==null||isNaN(n))return'—';if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'k';return fmtNum(n,1)}
+function period(s){const d=serial2date(s);if(!d)return null;const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');return y+'-'+m}
+function periodLabel(p){if(!p||p==='—')return p;const[y,mo]=p.split('-');const mn=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];return(mn[parseInt(mo,10)-1]||mo)+' '+y}
 
-async function parseFile(file, client) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = e => {
-      try {
-        const wb = XLSX.read(e.target.result, { type:'binary', cellDates: false });
+async function parseFile(file,client){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'binary',cellDates:false});
 
-        // Billing Data — raw:true keeps dates as numeric serials
-        const bdSheet = wb.Sheets['Billing Data'] || wb.Sheets[wb.SheetNames[0]];
-        const bd = XLSX.utils.sheet_to_json(bdSheet, { header:1, defval:null, raw:true });
-        const billingRows = [];
-        for (let i = 1; i < bd.length; i++) {
-          const row = bd[i];
-          const serial = typeof row[0] === 'number' ? row[0] : null;
-          if (!serial || serial < 40000) continue;
-          billingRows.push({
-            dateSerial: serial, cooling: +row[1]||0, chiller: +row[2]||0,
-            chwp: +row[3]||0, cwp: +row[4]||0, ct: +row[5]||0,
-            aux: +row[6]||0, totalPlant: +row[7]||0, eff: +row[8]||0,
-          });
+        // Billing Data
+        const bdS=wb.Sheets['Billing Data']||wb.Sheets[wb.SheetNames[0]];
+        const bd=XLSX.utils.sheet_to_json(bdS,{header:1,defval:null,raw:true});
+        const billing=[];
+        for(let i=1;i<bd.length;i++){
+          const row=bd[i];
+          const serial=typeof row[0]==='number'?row[0]:null;
+          if(!serial||serial<40000)continue;
+          billing.push({dateSerial:serial,cooling:+row[1]||0,chiller:+row[2]||0,chwp:+row[3]||0,cwp:+row[4]||0,ct:+row[5]||0,aux:+row[6]||0,totalPlant:+row[7]||0,eff:+row[8]||0});
         }
 
-        // Derive period from first date in Billing Data
-        let period = null;
-        if (billingRows.length > 0) {
-          const d = excelSerialToDate(billingRows[0].dateSerial);
-          if (d) {
-            const y = d.getFullYear();
-            const mo = String(d.getMonth() + 1).padStart(2, '0');
-            period = y + '-' + mo;
-          }
-        }
+        // Period from first billing row
+        let per=null;
+        if(billing.length>0){const d=serial2date(billing[0].dateSerial);if(d)per=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 
         // Site Metrics
-        let metrics = {};
-        const smSheet = wb.Sheets['Site Metrics'];
-        if (smSheet) {
-          const sm = XLSX.utils.sheet_to_json(smSheet, { header:1, defval:null });
-          if (sm.length > 1 && sm[1]) {
-            metrics = { rns:+sm[1][1]||0, maxRns:+sm[1][2]||0, totalElec:+sm[1][3]||0 };
-            // Fallback: derive period from Site Metrics Month column if not yet set
-            if (!period && sm[1][0] && !isNaN(sm[1][0])) {
-              const d = excelSerialToDate(sm[1][0]);
-              if (d) {
-                const y = d.getFullYear();
-                const mo = String(d.getMonth() + 1).padStart(2, '0');
-                period = y + '-' + mo;
-              }
-            }
-          }
-        }
+        let metrics={};
+        const smS=wb.Sheets['Site Metrics'];
+        if(smS){const sm=XLSX.utils.sheet_to_json(smS,{header:1,defval:null,raw:true});
+          if(sm.length>1&&sm[1])metrics={rns:+sm[1][1]||0,maxRns:+sm[1][2]||0,totalElec:+sm[1][3]||0,oldEff:+sm[1][4]||0,emissionFactor:+sm[1][5]||0}}
 
-        res({ client, period: period||'—', billing: billingRows, metrics });
-      } catch(err) { rej(err); }
+        // Weekly Breakdown
+        let weekly=[];
+        const wS=wb.Sheets['Weekly Breakdown Data'];
+        if(wS){const wd=XLSX.utils.sheet_to_json(wS,{header:1,defval:null,raw:true});
+          for(let i=1;i<wd.length;i++){const row=wd[i];if(!row[0])continue;
+            weekly.push({week:row[1]||('Sem '+i),plantEff:+row[9]||0,chillerEff:+row[10]||0,coolingLoad:+row[16]||0,rns:+row[0]||0})}}
+
+        // Chiller Plant part-load
+        let partloadPlant=[];
+        const plS=wb.Sheets['Chiller Plant'];
+        if(plS){const pl=XLSX.utils.sheet_to_json(plS,{header:1,defval:null,raw:true});
+          for(let i=1;i<pl.length;i++){const row=pl[i];if(!row[0])continue;
+            partloadPlant.push({partLoad:+row[0]||0,occurrence:+row[3]||0,eff:+row[6]||0})}}
+
+        // CH1 part-load
+        let partloadCH1=[];
+        const ch1S=wb.Sheets['CH 1'];
+        if(ch1S){const c=XLSX.utils.sheet_to_json(ch1S,{header:1,defval:null,raw:true});
+          for(let i=1;i<c.length;i++){const row=c[i];if(!row[0])continue;
+            partloadCH1.push({partLoad:+row[0]||0,occurrence:+row[3]||0,eff:+row[6]||0})}}
+
+        // Part-Load Reference
+        let partloadRef=[];
+        const prS=wb.Sheets['Part-Load Efficiency Reference'];
+        if(prS){const pr=XLSX.utils.sheet_to_json(prS,{header:1,defval:null,raw:true});
+          for(let i=1;i<pr.length;i++){const row=pr[i];if(!row[0])continue;
+            partloadRef.push({partLoad:+row[0]||0,chillerEff:+row[2]||0,plantEff:+row[6]||0})}}
+
+        // Comments
+        let comments=[];
+        const cS=wb.Sheets['Comment'];
+        if(cS){const cm=XLSX.utils.sheet_to_json(cS,{header:1,defval:null,raw:true});
+          for(let i=1;i<cm.length;i++){const row=cm[i];if(row[1])comments.push({text:row[1]})}}
+
+        res({client,period:per||'—',billing,metrics,weekly,partloadPlant,partloadCH1,partloadRef,comments});
+      }catch(err){rej(err)}
     };
-    r.onerror = rej;
+    r.onerror=rej;
     r.readAsBinaryString(file);
   });
 }
 
-// ── BUILD DASHBOARD ────────────────────────────
-async function buildDashboard() {
-  showLoader(true, 'Lecture des fichiers...');
-  allData = [];
-  const total = pendingFiles.length;
-
-  for (let i = 0; i < pendingFiles.length; i++) {
-    const { file, client } = pendingFiles[i];
-    setProgress(Math.round((i / total) * 100), `Lecture : ${file.name}`);
-    try {
-      const d = await parseFile(file, client);
-      allData.push(d);
-    } catch(e) { console.error('Error', file.name, e); }
+// ═══════════════════════════════════════════════════
+// BUILD DASHBOARD
+// ═══════════════════════════════════════════════════
+async function buildDashboard(){
+  showLoader(true,'Lecture des fichiers...');
+  allData=[];
+  for(let i=0;i<pendingFiles.length;i++){
+    const{file,client}=pendingFiles[i];
+    setProgress(Math.round(i/pendingFiles.length*100),`Lecture : ${file.name}`);
+    try{allData.push(await parseFile(file,client))}catch(e){console.error(file.name,e)}
   }
+  setProgress(100,'Construction...');
 
-  setProgress(100, 'Construction du dashboard...');
+  const clients=[...new Set(allData.map(d=>d.client))].sort();
+  const periods=[...new Set(allData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
+  const selC=document.getElementById('sel-client');
+  const selM=document.getElementById('sel-month');
+  selC.innerHTML='<option value="">Tous les clients</option>'+clients.map(c=>`<option value="${c}">${c}</option>`).join('');
+  selM.innerHTML='<option value="">Tous les mois</option>'+periods.map(p=>`<option value="${p}">${periodLabel(p)||p}</option>`).join('');
 
-  // Populate filters
-  const clients = [...new Set(allData.map(d => d.client))].sort();
-  const periods = [...new Set(allData.map(d => d.period).filter(p => p !== '—'))].sort();
-  const selC = document.getElementById('sel-client');
-  const selM = document.getElementById('sel-month');
-  selC.innerHTML = '<option value="">Tous les clients</option>' + clients.map(c => `<option value="${c}">${c}</option>`).join('');
-  selM.innerHTML = '<option value="">Tous les mois</option>' + periods.map(p => `<option value="${p}">${periodLabel(p) || p}</option>`).join('');
-
-  document.getElementById('drop-zone').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('drop-zone').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('page-tabs').style.display='flex';
   filterDashboard();
   showLoader(false);
 }
 
-function filterDashboard() {
-  const client = document.getElementById('sel-client').value;
-  const month = document.getElementById('sel-month').value;
-  const datasets = allData.filter(d => (!client || d.client === client) && (!month || d.period === month));
-  filteredRows = datasets.flatMap(d => d.billing.map(r => ({ ...r, client: d.client, period: d.period }))).sort((a,b) => a.dateSerial - b.dateSerial);
-  const metrics = datasets.reduce((acc, d) => ({
-    rns: (acc.rns||0) + (d.metrics.rns||0),
-    maxRns: (acc.maxRns||0) + (d.metrics.maxRns||0),
-    totalElec: (acc.totalElec||0) + (d.metrics.totalElec||0),
-  }), {});
-  updateKPIs(filteredRows, metrics, datasets);
-  updateCharts(filteredRows, datasets);
-  updateTable(filteredRows);
+function filterDashboard(){
+  const client=document.getElementById('sel-client').value;
+  const month=document.getElementById('sel-month').value;
+  filteredData=allData.filter(d=>(!client||d.client===client)&&(!month||d.period===month));
+  document.getElementById('filter-info').textContent=`${filteredData.length} fichier(s) — ${filteredData.flatMap(d=>d.billing).length} jours`;
+  renderCurrentPage();
 }
 
-function updateKPIs(rows, metrics, datasets) {
-  const totalCooling = rows.reduce((s,r) => s+r.cooling, 0);
-  const totalPower   = rows.reduce((s,r) => s+r.totalPlant, 0);
-  const avgEff = rows.length ? rows.reduce((s,r) => s+r.eff, 0) / rows.length : 0;
-  document.getElementById('kpi-cooling').textContent = fmtBig(totalCooling);
-  document.getElementById('kpi-power').textContent   = fmtBig(totalPower);
-  document.getElementById('kpi-eff').textContent     = avgEff.toFixed(3);
-  document.getElementById('kpi-days').textContent    = rows.length;
-  document.getElementById('kpi-rns').textContent     = fmtNum(metrics.rns);
-  document.getElementById('kpi-rns-max').textContent = fmtNum(metrics.maxRns);
-  document.getElementById('kpi-elec').textContent    = fmtBig(metrics.totalElec);
-  const clientNames = [...new Set(datasets.map(d => d.client))].join(', ');
-  const perds = [...new Set(datasets.map(d => d.period).filter(p=>p&&p!=='—'))].sort().map(p => periodLabel(p)||p).join(', ');
-  document.getElementById('dash-title').textContent  = clientNames || 'Dashboard CPPR';
-  document.getElementById('dash-period').textContent = perds ? '📅 ' + perds : '';
+function renderCurrentPage(){
+  if(currentPage==='monthly')renderMonthly();
+  else if(currentPage==='yearly')renderYearly();
+  else if(currentPage==='detailed')renderDetailed();
+  else if(currentPage==='raw')renderRaw();
 }
 
-// ── CHARTS ─────────────────────────────────────
-function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+// ═══════════════════════════════════════════════════
+// MONTHLY PAGE
+// ═══════════════════════════════════════════════════
+function renderMonthly(){
+  const rows=filteredData.flatMap(d=>d.billing);
+  const metrics=sumMetrics(filteredData);
+  const totalCooling=rows.reduce((s,r)=>s+r.cooling,0);
+  const totalPlant=rows.reduce((s,r)=>s+r.totalPlant,0);
+  const avgEff=rows.length?rows.reduce((s,r)=>s+r.eff,0)/rows.length:0;
 
-function updateCharts(rows, datasets) {
-  const labels = rows.map(r => fmtDateShort(r.dateSerial));
-  const clients = [...new Set(rows.map(r => r.client))];
-  const multiClient = clients.length > 1;
+  // Electricity savings = (oldEff - currentEff) * cooling
+  const elecSavings=Math.max(0,(metrics.oldEff-avgEff)*totalCooling);
+  const co2=elecSavings*(metrics.emissionFactor||0.84)/1000;
+  const trees=Math.round(co2/0.021);
+  const coolingPerRoom=metrics.rns>0?totalCooling/metrics.rns:0;
+  const energyPerRoom=metrics.rns>0?metrics.totalElec/metrics.rns:0;
 
-  // Chart 1: Cooling + Power — one dataset per client if multi
-  destroyChart('load');
-  const ctx1 = document.getElementById('chart-load').getContext('2d');
-  let loadDatasets;
-  if (multiClient) {
-    loadDatasets = clients.flatMap(c => {
-      const color = clientColor(c);
-      const clientRows = rows.filter(r => r.client === c);
-      return [
-        { label: c + ' – Cooling (TRh)', data: rows.map(r => r.client===c ? +r.cooling.toFixed(1) : null), backgroundColor: color+'99', borderRadius:2, yAxisID:'y', type:'bar', spanGaps:false },
-        { label: c + ' – Power (kWh)', data: rows.map(r => r.client===c ? +r.totalPlant.toFixed(1) : null), borderColor: color, backgroundColor: color+'22', pointRadius:1, borderWidth:2, fill:false, tension:.3, yAxisID:'y2', type:'line', spanGaps:false },
-      ];
-    });
-  } else {
-    loadDatasets = [
-      { label:'Cooling Load (TRh)', data:rows.map(r=>+r.cooling.toFixed(1)), backgroundColor:'rgba(59,130,246,.7)', borderRadius:3, yAxisID:'y' },
-      { label:'Total Plant Power (kWh)', data:rows.map(r=>+r.totalPlant.toFixed(1)), type:'line', borderColor:'#06b6d4', backgroundColor:'rgba(6,182,212,.1)', pointRadius:2, borderWidth:2, fill:true, tension:.3, yAxisID:'y2' }
-    ];
-  }
-  charts['load'] = new Chart(ctx1, {
-    type:'bar', data:{ labels, datasets: loadDatasets },
-    options: chartOpts({ y:'TRh', y2:'kWh', y2right:true })
-  });
+  document.getElementById('kpi-monthly').innerHTML=`
+    <div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">${fmtBig(totalCooling)}</div><div class="kpi-unit">TRh</div></div>
+    <div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">${fmtBig(totalPlant)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">${fmtBig(elecSavings)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">${fmtNum(co2,2)}</div><div class="kpi-unit">Tons of CO₂e</div></div>
+    <div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">${fmtNum(trees)}</div><div class="kpi-unit">Trees 🌳</div></div>
+    <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmtNum(metrics.oldEff,2)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">${fmtNum(avgEff,3)}</div><div class="kpi-unit">kW/TR</div></div>
+  `;
 
-  // Chart 2: Efficiency
-  destroyChart('eff');
-  const ctx2 = document.getElementById('chart-eff').getContext('2d');
-  const effDatasets = multiClient
-    ? clients.map(c => ({ label: c, data: rows.map(r => r.client===c ? +r.eff.toFixed(4) : null), borderColor: clientColor(c), backgroundColor: clientColor(c)+'22', pointRadius:1, borderWidth:2, fill:false, tension:.3, spanGaps:false }))
-    : [{ label:'Eff (kW/TR)', data:rows.map(r=>+r.eff.toFixed(4)), borderColor:'#8b5cf6', backgroundColor:'rgba(139,92,246,.1)', pointRadius:2, borderWidth:2, fill:true, tension:.3 }];
-  charts['eff'] = new Chart(ctx2, {
-    type:'line', data:{ labels, datasets: effDatasets },
-    options: chartOpts({ y:'kW/TR' })
-  });
+  document.getElementById('kpi-hotel').innerHTML=`
+    <div class="kpi"><div class="kpi-label">Room Nights Sold</div><div class="kpi-value">${fmtNum(metrics.rns)}</div><div class="kpi-unit">RNS / Max ${fmtNum(metrics.maxRns)}</div></div>
+    <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmtBig(metrics.totalElec)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Cooling / Room</div><div class="kpi-value">${fmtNum(coolingPerRoom,2)}</div><div class="kpi-unit">TRh/RNS</div></div>
+    <div class="kpi"><div class="kpi-label">Energy / Room</div><div class="kpi-value">${fmtNum(energyPerRoom,2)}</div><div class="kpi-unit">kWh/RNS</div></div>
+  `;
 
-  // Chart 3: Breakdown (doughnut)
-  destroyChart('breakdown');
-  const ctx3 = document.getElementById('chart-breakdown').getContext('2d');
-  const sum = k => rows.reduce((s,r) => s + (r[k]||0), 0);
-  charts['breakdown'] = new Chart(ctx3, {
-    type:'doughnut',
-    data:{
-      labels:['Chiller','CHWP','CWP','CT','Auxiliaires'],
-      datasets:[{ data:[sum('chiller'),sum('chwp'),sum('cwp'),sum('ct'),sum('aux')].map(v=>+v.toFixed(0)), backgroundColor:['#3b82f6','#06b6d4','#8b5cf6','#10b981','#f59e0b'], borderWidth:0 }]
-    },
-    options:{
-      plugins:{
-        legend:{ position:'right', labels:{ color:'#94a3b8', font:{size:11}, padding:12 } },
-        tooltip:{ callbacks:{ label: ctx => ctx.label + ': ' + fmtNum(ctx.raw) + ' kWh' } }
+  // ASHRAE gauge (0.5=excellent, 0.7=good, 0.9=fair, 1.2=need improvement)
+  const eff=avgEff;
+  const pct=Math.min(100,Math.max(0,(eff-0.5)/(1.2-0.5)*100));
+  document.getElementById('ashrae-needle').style.left=pct+'%';
+  document.getElementById('ashrae-val').textContent=fmtNum(eff,3)+' kW/TR';
+  let zone='',zcolor='';
+  if(eff<0.7){zone='EXCELLENT';zcolor='var(--good)'}
+  else if(eff<0.9){zone='GOOD';zcolor='#2d8a4e'}
+  else if(eff<1.1){zone='FAIR';zcolor='var(--warn)'}
+  else{zone='NEED IMPROVEMENT';zcolor='var(--bad)'}
+  const zEl=document.getElementById('ashrae-zone');
+  zEl.textContent=zone;zEl.style.color=zcolor;
+
+  // Weekly chart
+  const allWeekly=filteredData.flatMap(d=>d.weekly);
+  destroyChart('weekly');
+  if(allWeekly.length>0){
+    const ctx=document.getElementById('chart-weekly').getContext('2d');
+    charts['weekly']=new Chart(ctx,{
+      type:'bar',
+      data:{
+        labels:allWeekly.map(w=>w.week),
+        datasets:[
+          {label:'Cooling Load (TR)',data:allWeekly.map(w=>+w.coolingLoad.toFixed(1)),backgroundColor:'rgba(59,130,246,.6)',borderRadius:4,yAxisID:'y'},
+          {label:'Plant Eff (kW/TR)',data:allWeekly.map(w=>+w.plantEff.toFixed(4)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+          {label:'Chiller Eff (kW/TR)',data:allWeekly.map(w=>+w.chillerEff.toFixed(4)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        ]
       },
-      cutout:'65%',
-    }
+      options:chartOpts({y:'TR',y2:'kW/TR',y2right:true})
+    });
+  }
+
+  // Energy share pies
+  const chPlantPct=metrics.totalElec>0?(totalPlant/metrics.totalElec*100):0;
+  const otherPct=100-chPlantPct;
+  destroyChart('energy-share');
+  charts['energy-share']=new Chart(document.getElementById('chart-energy-share').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['Chiller Plant','Other'],datasets:[{data:[+chPlantPct.toFixed(2),+otherPct.toFixed(2)],backgroundColor:['#3b82f6','#1e2333'],borderWidth:0}]},
+    options:{cutout:'65%',plugins:{legend:{position:'right',labels:{color:'#94a3b8',font:{size:11},padding:10}},tooltip:{callbacks:{label:c=>c.label+': '+c.raw+'%'}}}}
+  });
+
+  destroyChart('plant-share');
+  const totCh=rows.reduce((s,r)=>s+r.chiller,0);
+  const totCHWP=rows.reduce((s,r)=>s+r.chwp,0);
+  const totCWP=rows.reduce((s,r)=>s+r.cwp,0);
+  const totCT=rows.reduce((s,r)=>s+r.ct,0);
+  const totAux=rows.reduce((s,r)=>s+r.aux,0);
+  charts['plant-share']=new Chart(document.getElementById('chart-plant-share').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:['Chiller','CHWP','CWP','CT','Aux'],datasets:[{data:[totCh,totCHWP,totCWP,totCT,totAux].map(v=>+v.toFixed(0)),backgroundColor:['#1e3a6e','#3b82f6','#06b6d4','#10b981','#f59e0b'],borderWidth:0}]},
+    options:{cutout:'65%',plugins:{legend:{position:'right',labels:{color:'#94a3b8',font:{size:11},padding:10}},tooltip:{callbacks:{label:c=>c.label+': '+fmtNum(c.raw)+' kWh'}}}}
+  });
+
+  // Daily load chart
+  const sorted=rows.slice().sort((a,b)=>a.dateSerial-b.dateSerial);
+  destroyChart('load');
+  charts['load']=new Chart(document.getElementById('chart-load').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:sorted.map(r=>fmtShort(r.dateSerial)),
+      datasets:[
+        {label:'Cooling Load (TRh)',data:sorted.map(r=>+r.cooling.toFixed(1)),backgroundColor:'rgba(59,130,246,.65)',borderRadius:3,yAxisID:'y'},
+        {label:'Total Plant (kWh)',data:sorted.map(r=>+r.totalPlant.toFixed(1)),type:'line',borderColor:'#06b6d4',backgroundColor:'rgba(6,182,212,.08)',pointRadius:2,borderWidth:2,fill:true,tension:.3,yAxisID:'y2'},
+      ]
+    },
+    options:chartOpts({y:'TRh',y2:'kWh',y2right:true})
   });
 }
 
-function chartOpts({ y='', y2='', y2right=false }={}) {
-  const base = {
-    responsive:true, maintainAspectRatio:false,
-    plugins:{ legend:{ labels:{ color:'#94a3b8', font:{size:11} } }, tooltip:{ mode:'index', intersect:false } },
-    scales:{
-      x:{ ticks:{ color:'#64748b', font:{size:10}, maxTicksLimit:15 }, grid:{ color:'rgba(42,48,80,.5)' } },
-      y:{ title:{ display:!!y, text:y, color:'#64748b', font:{size:10} }, ticks:{ color:'#64748b', font:{size:10} }, grid:{ color:'rgba(42,48,80,.5)' } }
-    }
-  };
-  if (y2right) {
-    base.scales.y2 = { position:'right', title:{ display:!!y2, text:y2, color:'#64748b', font:{size:10} }, ticks:{ color:'#64748b', font:{size:10} }, grid:{ drawOnChartArea:false } };
+// ═══════════════════════════════════════════════════
+// YEARLY PAGE
+// ═══════════════════════════════════════════════════
+function renderYearly(){
+  // Group by period
+  const byPeriod={};
+  for(const d of allData){
+    if(!byPeriod[d.period])byPeriod[d.period]={period:d.period,billing:[],metrics:{}};
+    byPeriod[d.period].billing.push(...d.billing);
+    const m=d.metrics;
+    const bm=byPeriod[d.period].metrics;
+    bm.rns=(bm.rns||0)+m.rns;bm.maxRns=(bm.maxRns||0)+m.maxRns;bm.totalElec=(bm.totalElec||0)+m.totalElec;
+    bm.oldEff=m.oldEff||bm.oldEff;bm.emissionFactor=m.emissionFactor||bm.emissionFactor;
   }
-  return base;
+  const periods=Object.values(byPeriod).filter(p=>p.period&&p.period!=='—').sort((a,b)=>a.period.localeCompare(b.period));
+
+  // Cumulative stats
+  const totCooling=periods.flatMap(p=>p.billing).reduce((s,r)=>s+r.cooling,0);
+  const totPlant=periods.flatMap(p=>p.billing).reduce((s,r)=>s+r.totalPlant,0);
+  const totRns=periods.reduce((s,p)=>s+(p.metrics.rns||0),0);
+  const totElec=periods.reduce((s,p)=>s+(p.metrics.totalElec||0),0);
+  const avgEff=periods.flatMap(p=>p.billing).length?periods.flatMap(p=>p.billing).reduce((s,r)=>s+r.eff,0)/periods.flatMap(p=>p.billing).length:0;
+  const oldEff=periods[0]?.metrics.oldEff||1.69;
+  const avgSavingsPct=oldEff>0?Math.round((1-avgEff/oldEff)*100):0;
+  const totElecSavings=Math.max(0,(oldEff-avgEff)*totCooling);
+  const co2=totElecSavings*(periods[0]?.metrics.emissionFactor||0.84)/1000;
+
+  document.getElementById('kpi-yearly').innerHTML=`
+    <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmtNum(oldEff,2)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">${fmtNum(avgEff,3)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Saving</div><div class="kpi-value green">${avgSavingsPct} %</div><div class="kpi-unit">vs old system</div></div>
+    <div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">${fmtBig(totCooling)}</div><div class="kpi-unit">TRh</div></div>
+    <div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">${fmtBig(totElecSavings)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Total Carbon Savings</div><div class="kpi-value green">${fmtNum(co2,2)}</div><div class="kpi-unit">Tons CO₂e</div></div>
+  `;
+
+  const labels=periods.map(p=>periodLabel(p.period)||p.period);
+
+  // RNS + Electricity
+  destroyChart('yearly-rns');
+  charts['yearly-rns']=new Chart(document.getElementById('chart-yearly-rns').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'RNS',data:periods.map(p=>p.metrics.rns||0),backgroundColor:'rgba(59,130,246,.65)',borderRadius:3,yAxisID:'y'},
+        {label:'Total Electricity (kWh)',data:periods.map(p=>p.metrics.totalElec||0),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+      ]
+    },
+    options:chartOpts({y:'RNS',y2:'kWh',y2right:true})
+  });
+
+  // Cooling + efficiencies
+  destroyChart('yearly-load');
+  charts['yearly-load']=new Chart(document.getElementById('chart-yearly-load').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Cooling Load (TRh)',data:periods.map(p=>+p.billing.reduce((s,r)=>s+r.cooling,0).toFixed(0)),backgroundColor:'rgba(59,130,246,.5)',borderRadius:3,yAxisID:'y'},
+        {label:'Plant Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;return b.length?+(b.reduce((s,r)=>s+r.eff,0)/b.length).toFixed(4):0}),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Chiller Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;return b.length?+(b.reduce((s,r)=>s+r.chiller/Math.max(r.cooling,1),0)/b.length).toFixed(4):0}),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      ]
+    },
+    options:chartOpts({y:'TRh',y2:'kW/TR',y2right:true})
+  });
+
+  // Per room
+  destroyChart('yearly-room');
+  charts['yearly-room']=new Chart(document.getElementById('chart-yearly-room').getContext('2d'),{
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Cooling/Room (TRh/RNS)',data:periods.map(p=>p.metrics.rns>0?+(p.billing.reduce((s,r)=>s+r.cooling,0)/p.metrics.rns).toFixed(2):0),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
+        {label:'Energy/Room (kWh/RNS)',data:periods.map(p=>p.metrics.rns>0?+((p.metrics.totalElec||0)/p.metrics.rns).toFixed(2):0),borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      ]
+    },
+    options:chartOpts({y:'TRh/RNS',y2:'kWh/RNS',y2right:true})
+  });
+
+  // Comments
+  const comments=filteredData.flatMap(d=>d.comments);
+  const cl=document.getElementById('comments-list');
+  if(comments.length){cl.innerHTML=comments.map(c=>`<div style="margin-bottom:6px;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--accent)">— ${c.text}</div>`).join('')}
+  else{cl.innerHTML='<div style="color:var(--muted)">Aucun commentaire dans les fichiers chargés.</div>'}
 }
 
-// ── TABLE ───────────────────────────────────────
-function updateTable(rows) {
-  document.getElementById('table-count').textContent = rows.length + ' lignes';
-  const tbody = document.getElementById('table-body');
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="10" class="empty">Aucune donnée</td></tr>'; return; }
-  tbody.innerHTML = rows.map(r => {
-    const effClass = r.eff < 0.8 ? 'eff-good' : r.eff < 1.0 ? 'eff-mid' : 'eff-bad';
-    const dot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${clientColor(r.client)};margin-right:5px"></span>`;
-    return `<tr>
-      <td>${fmtDate(r.dateSerial)}</td>
-      <td>${dot}${r.client}</td>
-      <td>${fmtNum(r.cooling,1)}</td><td>${fmtNum(r.chiller,1)}</td>
-      <td>${fmtNum(r.chwp,1)}</td><td>${fmtNum(r.cwp,1)}</td>
-      <td>${fmtNum(r.ct,1)}</td><td>${fmtNum(r.aux,1)}</td>
-      <td>${fmtNum(r.totalPlant,1)}</td>
-      <td class="${effClass}">${r.eff.toFixed(4)}</td>
-    </tr>`;
+// ═══════════════════════════════════════════════════
+// DETAILED PAGE
+// ═══════════════════════════════════════════════════
+function renderDetailed(){
+  const rows=filteredData.flatMap(d=>d.billing).sort((a,b)=>a.dateSerial-b.dateSerial);
+
+  // Efficiency compare: last month vs this month (if 2 periods)
+  const periods=[...new Set(filteredData.map(d=>d.period))].sort();
+  destroyChart('eff-compare');
+  if(periods.length>=2){
+    const p1=filteredData.filter(d=>d.period===periods[periods.length-2]);
+    const p2=filteredData.filter(d=>d.period===periods[periods.length-1]);
+    const avgComp=(arr,key)=>{const b=arr.flatMap(d=>d.billing);return b.length?b.reduce((s,r)=>s+r[key],0)/b.length:0};
+    const avgChiller=(arr)=>{const b=arr.flatMap(d=>d.billing);return b.length?b.reduce((s,r)=>s+r.chiller/Math.max(r.cooling,1),0)/b.length:0};
+    const categories=['Chiller','CHWP','CWP','CT','Aux'];
+    const keys=['chiller','chwp','cwp','ct','aux'];
+    const v1=keys.map(k=>+(avgComp(p1,k)/Math.max(avgComp(p1,'cooling'),1)).toFixed(4));
+    const v2=keys.map(k=>+(avgComp(p2,k)/Math.max(avgComp(p2,'cooling'),1)).toFixed(4));
+    charts['eff-compare']=new Chart(document.getElementById('chart-eff-compare').getContext('2d'),{
+      type:'bar',
+      data:{
+        labels:categories,
+        datasets:[
+          {label:periodLabel(periods[periods.length-2])||'Mois précédent',data:v1,backgroundColor:'rgba(100,116,139,.5)',borderRadius:4},
+          {label:periodLabel(periods[periods.length-1])||'Ce mois',data:v2,backgroundColor:'rgba(59,130,246,.7)',borderRadius:4},
+        ]
+      },
+      options:{...chartOpts({y:'kW/TR'}),indexAxis:'y'}
+    });
+  }else if(rows.length>0){
+    // Single period: just show breakdown
+    const b=filteredData.flatMap(d=>d.billing);
+    const cool=Math.max(b.reduce((s,r)=>s+r.cooling,0),1);
+    charts['eff-compare']=new Chart(document.getElementById('chart-eff-compare').getContext('2d'),{
+      type:'bar',
+      data:{
+        labels:['Chiller','CHWP','CWP','CT','Aux'],
+        datasets:[{label:'kW/TR',data:['chiller','chwp','cwp','ct','aux'].map(k=>+(b.reduce((s,r)=>s+r[k],0)/cool).toFixed(4)),backgroundColor:['#1e3a6e','#3b82f6','#06b6d4','#10b981','#f59e0b'],borderRadius:4}]
+      },
+      options:{...chartOpts({y:'kW/TR'}),indexAxis:'y'}
+    });
+  }
+
+  // Daily efficiency
+  destroyChart('eff-daily');
+  charts['eff-daily']=new Chart(document.getElementById('chart-eff-daily').getContext('2d'),{
+    type:'line',
+    data:{
+      labels:rows.map(r=>fmtShort(r.dateSerial)),
+      datasets:[
+        {label:'Eff (kW/TR)',data:rows.map(r=>+r.eff.toFixed(4)),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.08)',pointRadius:2,borderWidth:2,fill:true,tension:.3},
+        {label:'Moyenne',data:rows.map(()=>rows.length?+(rows.reduce((s,r)=>s+r.eff,0)/rows.length).toFixed(4):0),borderColor:'rgba(255,255,255,.2)',borderDash:[4,4],pointRadius:0,borderWidth:1},
+      ]
+    },
+    options:chartOpts({y:'kW/TR'})
+  });
+
+  // Part-load Chiller Plant
+  const pl=filteredData.flatMap(d=>d.partloadPlant);
+  const pr=filteredData[0]?.partloadRef||[];
+  destroyChart('partload');
+  if(pl.length){
+    const totalOcc=pl.reduce((s,p)=>s+p.occurrence,0)||1;
+    charts['partload']=new Chart(document.getElementById('chart-partload').getContext('2d'),{
+      type:'bar',
+      data:{
+        labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),
+        datasets:[
+          {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/totalOcc*100).toFixed(2)),backgroundColor:'rgba(59,130,246,.3)',borderRadius:3,yAxisID:'y'},
+          {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+          ...(pr.length?[{label:'Reference (kW/TR)',data:pr.map(p=>+p.plantEff.toFixed(4)),type:'line',borderColor:'rgba(245,158,11,.7)',pointRadius:3,borderDash:[4,4],borderWidth:2,fill:false,yAxisID:'y2'}]:[]),
+        ]
+      },
+      options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})
+    });
+  }
+
+  // Part-load CH1
+  const ch1=filteredData.flatMap(d=>d.partloadCH1);
+  destroyChart('partload-ch1');
+  if(ch1.length){
+    const tot=ch1.reduce((s,p)=>s+p.occurrence,0)||1;
+    charts['partload-ch1']=new Chart(document.getElementById('chart-partload-ch1').getContext('2d'),{
+      type:'bar',
+      data:{
+        labels:ch1.map(p=>(p.partLoad*100).toFixed(0)+'%'),
+        datasets:[
+          {label:'Occurrence (%)',data:ch1.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(139,92,246,.3)',borderRadius:3,yAxisID:'y'},
+          {label:'CH1 (kW/TR)',data:ch1.map(p=>+p.eff.toFixed(4)),type:'line',borderColor:'#8b5cf6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        ]
+      },
+      options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// RAW TABLE PAGE
+// ═══════════════════════════════════════════════════
+function renderRaw(){
+  const rows=filteredData.flatMap(d=>d.billing.map(r=>({...r,client:d.client,period:d.period}))).sort((a,b)=>a.dateSerial-b.dateSerial);
+  document.getElementById('table-count').textContent=rows.length+' lignes';
+  const tb=document.getElementById('table-body');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="11" class="empty">Aucune donnée</td></tr>';return}
+  tb.innerHTML=rows.map(r=>{
+    const ec=r.eff<0.8?'eff-good':r.eff<1.0?'eff-mid':'eff-bad';
+    const dot=`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${clientColor(r.client)};margin-right:4px"></span>`;
+    return`<tr><td>${fmtDate(r.dateSerial)}</td><td>${dot}${r.client}</td><td>${periodLabel(r.period)||r.period}</td><td>${fmtNum(r.cooling,1)}</td><td>${fmtNum(r.chiller,1)}</td><td>${fmtNum(r.chwp,1)}</td><td>${fmtNum(r.cwp,1)}</td><td>${fmtNum(r.ct,1)}</td><td>${fmtNum(r.aux,1)}</td><td>${fmtNum(r.totalPlant,1)}</td><td class="${ec}">${r.eff.toFixed(4)}</td></tr>`;
   }).join('');
 }
 
-// ── UTILS ───────────────────────────────────────
-function showLoader(v, txt='') { document.getElementById('loader').className = v ? 'show' : ''; if (txt) document.getElementById('loader-text').textContent = txt; }
-function setProgress(pct, txt) { document.getElementById('progress-fill').style.width = pct + '%'; if (txt) document.getElementById('loader-text').textContent = txt; }
-function resetDashboard() {
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('drop-zone').style.display = 'flex';
-  document.getElementById('file-list').innerHTML = '';
-  document.getElementById('scan-status').style.display = 'none';
-  document.getElementById('load-btn').style.display = 'none';
-  document.getElementById('file-input').value = '';
-  document.getElementById('folder-input').value = '';
-  pendingFiles.length = 0; allData = [];
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+function sumMetrics(data){
+  return data.reduce((acc,d)=>({
+    rns:(acc.rns||0)+(d.metrics.rns||0),
+    maxRns:(acc.maxRns||0)+(d.metrics.maxRns||0),
+    totalElec:(acc.totalElec||0)+(d.metrics.totalElec||0),
+    oldEff:d.metrics.oldEff||acc.oldEff||1.69,
+    emissionFactor:d.metrics.emissionFactor||acc.emissionFactor||0.84,
+  }),{});
+}
+
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
+
+function chartOpts({y='',y2='',y2right=false}={}){
+  const base={
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:12}},tooltip:{mode:'index',intersect:false}},
+    scales:{
+      x:{ticks:{color:'#64748b',font:{size:10},maxTicksLimit:15},grid:{color:'rgba(42,48,80,.5)'}},
+      y:{title:{display:!!y,text:y,color:'#64748b',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(42,48,80,.5)'}}
+    }
+  };
+  if(y2right)base.scales.y2={position:'right',title:{display:!!y2,text:y2,color:'#64748b',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{drawOnChartArea:false}};
+  return base;
+}
+
+function showLoader(v,txt=''){document.getElementById('loader').className=v?'show':'';if(txt)document.getElementById('loader-text').textContent=txt}
+function setProgress(pct,txt){document.getElementById('progress-fill').style.width=pct+'%';if(txt)document.getElementById('loader-text').textContent=txt}
+
+function resetDashboard(){
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('page-tabs').style.display='none';
+  document.getElementById('drop-zone').style.display='flex';
+  document.getElementById('file-list').innerHTML='';
+  document.getElementById('scan-status').style.display='none';
+  document.getElementById('load-btn').style.display='none';
+  document.getElementById('file-input').value='';
+  document.getElementById('folder-input').value='';
+  pendingFiles.length=0;allData=[];filteredData=[];
+  Object.keys(charts).forEach(k=>{charts[k].destroy();delete charts[k]});
+  // reset tabs
+  document.querySelectorAll('.page-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active',p.id==='page-monthly'));
+  currentPage='monthly';
 }
 </script>
 </body>
