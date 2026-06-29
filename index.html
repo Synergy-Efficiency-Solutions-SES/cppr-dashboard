@@ -638,7 +638,7 @@ function renderMonthly(){
   zEl.textContent=zone;zEl.style.color=zcolor;
 
   // Weekly chart
-  const allWeekly=filteredData.flatMap(d=>d.weekly);
+  const allWeekly=filteredData.slice().sort((a,b)=>a.period.localeCompare(b.period)).flatMap(d=>d.weekly);
   destroyChart('weekly');
   if(allWeekly.length>0){
     const ctx=document.getElementById('chart-weekly').getContext('2d');
