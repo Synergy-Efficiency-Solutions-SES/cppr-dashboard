@@ -337,8 +337,25 @@ tr:hover td{background:rgba(59,130,246,.04)}
 
   <!-- PAGE: MAIN CH -->
   <div class="page" id="page-maincH">
-    <div class="section-title">Detailed Performance — Main Chiller(s)</div>
-    <div id="chillers-container"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="section-title" style="margin:0">Detailed Performance — Main Chiller(s)</div>
+      <select id="sel-chiller" onchange="renderMainCH()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer">
+        <option value="">Tous les chillers</option>
+      </select>
+    </div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div id="chillers-container"></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div class="card-head"><div class="card-title">Evaporator and Condenser Approach — Weekly</div><div class="card-sub">Evaporator + Condenser Approach (°C) vs Occurrence</div></div>
+          <div class="card-body"><div class="chart-h260"><canvas id="chart-ch-approach"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Evaporator and Condenser Flow — Weekly</div><div class="card-sub">CHW Flow + CW Flow (LPS) vs Occurrence</div></div>
+          <div class="card-body"><div class="chart-h260"><canvas id="chart-ch-flow"></canvas></div></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- PAGE: CHWP -->
@@ -1208,14 +1225,53 @@ function renderMainCH(){
   const thisData=allData.filter(d=>(!client||d.client===client)&&d.period===thisPer);
   const allChillerNames=[...new Set(thisData.flatMap(d=>Object.keys(d.chillerSheets||{})))].sort();
   const container=document.getElementById('chillers-container');
+  // Populate CH filter
+  const selCH=document.getElementById('sel-chiller');
+  if(selCH){
+    const prevVal=selCH.value;
+    selCH.innerHTML='<option value="">Tous les chillers</option>'+allChillerNames.map(cn=>`<option value="${cn}">${cn}</option>`).join('');
+    if(allChillerNames.includes(prevVal)) selCH.value=prevVal;
+  }
+  const selectedCH=selCH?selCH.value:'';
+  const visibleChillers=selectedCH?[selectedCH]:allChillerNames;
   // Destroy old charts
   allChillerNames.forEach(cn=>{const id='chart-ch-'+cn.replace(/\s/g,'-');destroyChart(id);});
-  if(!allChillerNames.length){container.innerHTML='<div class="empty">Aucune feuille chiller trouvée (CH 1, CH 2...)</div>';return;}
-  container.innerHTML=`<div class="chart-grid grid-2">${allChillerNames.map(cn=>{
+  if(!allChillerNames.length){container.innerHTML='<div class="empty">Aucune feuille chiller trouvée (CH 1, CH 2...)</div>';}
+  
+  // Approach & Flow charts from weekly data
+  const weekly=getWeeklyForFilter();
+  const xlabels=weekly.map(w=>w.period.split('-').reverse().join('/')+' '+w.week);
+  destroyChart('ch-approach');
+  if(weekly.length){
+    charts['ch-approach']=new Chart(document.getElementById('chart-ch-approach').getContext('2d'),{
+      type:'bar',
+      data:{labels:xlabels,datasets:[
+        {label:'Occurrence (%)',data:weekly.map((_,i)=>+(100/weekly.length).toFixed(1)),backgroundColor:'rgba(59,130,246,.15)',borderRadius:3,yAxisID:'y'},
+        {label:'Evaporator (°C)',data:weekly.map(w=>+w.evapApproach.toFixed(2)),type:'line',borderColor:'#8b5cf6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Condenser (°C)',data:weekly.map(w=>+w.condApproach.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      ]},
+      options:chartOpts({y:'Occurrence %',y2:'Approach Temp (°C)',y2right:true})
+    });
+  }
+  destroyChart('ch-flow');
+  if(weekly.length){
+    charts['ch-flow']=new Chart(document.getElementById('chart-ch-flow').getContext('2d'),{
+      type:'bar',
+      data:{labels:xlabels,datasets:[
+        {label:'Occurrence (%)',data:weekly.map((_,i)=>+(100/weekly.length).toFixed(1)),backgroundColor:'rgba(59,130,246,.15)',borderRadius:3,yAxisID:'y'},
+        {label:'Evaporator Flow (LPS)',data:weekly.map(w=>+w.chwFlow.toFixed(2)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Condenser Flow (LPS)',data:weekly.map(w=>+w.cwFlow.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      ]},
+      options:chartOpts({y:'Occurrence %',y2:'Flow (LPS)',y2right:true})
+    });
+  }
+
+  if(!allChillerNames.length) return;
+  container.innerHTML=`<div class="chart-grid grid-2">${visibleChillers.map(cn=>{
     const id='chart-ch-'+cn.replace(/\s/g,'-');
     return `<div class="card"><div class="card-head"><div class="card-title">${cn} VS Specification</div><div class="card-sub">Part Load — Current + Last Month + Last 2 Month</div></div><div class="card-body"><div class="chart-h260"><canvas id="${id}"></canvas></div></div></div>`;
   }).join('')}</div>`;
-  allChillerNames.forEach(cn=>{
+  visibleChillers.forEach(cn=>{
     const id='chart-ch-'+cn.replace(/\s/g,'-');
     const curr=thisData.flatMap(d=>(d.chillerSheets||{})[cn]||[]);
     const last=lastPer?allData.filter(d=>(!client||d.client===client)&&d.period===lastPer).flatMap(d=>(d.chillerSheets||{})[cn]||[]):[];
