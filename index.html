@@ -1837,6 +1837,144 @@ function renderWeeklyTrend(){
 // ═══════════════════════════════════════════════════
 // LINEAR REGRESSION HELPER
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// REGRESSION MODELS — auto-select best fit by R²
+// ═══════════════════════════════════════════════════
+function r2Score(pts, predict){
+  const yMean=pts.reduce((s,p)=>s+p.y,0)/pts.length;
+  const ssTot=pts.reduce((s,p)=>s+Math.pow(p.y-yMean,2),0);
+  const ssRes=pts.reduce((s,p)=>s+Math.pow(p.y-predict(p.x),2),0);
+  return ssTot>0?1-(ssRes/ssTot):0;
+}
+
+function fitLinear(pts){
+  const n=pts.length;
+  const sx=pts.reduce((s,p)=>s+p.x,0), sy=pts.reduce((s,p)=>s+p.y,0);
+  const sxy=pts.reduce((s,p)=>s+p.x*p.y,0), sxx=pts.reduce((s,p)=>s+p.x*p.x,0);
+  const denom=n*sxx-sx*sx;
+  if(denom===0)return null;
+  const m=(n*sxy-sx*sy)/denom, b=(sy-m*sx)/n;
+  const predict=x=>m*x+b;
+  return{type:'linear',params:{m,b},predict,r2:r2Score(pts,predict),
+    label:`y = ${m.toFixed(4)}x ${b>=0?'+':'-'} ${Math.abs(b).toFixed(2)}`};
+}
+
+function fitPoly2(pts){
+  // y = ax² + bx + c — least squares via normal equations
+  const n=pts.length;
+  if(n<3)return null;
+  let Sx=0,Sx2=0,Sx3=0,Sx4=0,Sy=0,Sxy=0,Sx2y=0;
+  for(const p of pts){
+    const x=p.x,y=p.y,x2=x*x;
+    Sx+=x;Sx2+=x2;Sx3+=x2*x;Sx4+=x2*x2;Sy+=y;Sxy+=x*y;Sx2y+=x2*y;
+  }
+  // Solve 3x3 system [Sx4 Sx3 Sx2; Sx3 Sx2 Sx; Sx2 Sx n] * [a;b;c] = [Sx2y;Sxy;Sy]
+  const A=[[Sx4,Sx3,Sx2],[Sx3,Sx2,Sx],[Sx2,Sx,n]];
+  const B=[Sx2y,Sxy,Sy];
+  const sol=solve3x3(A,B);
+  if(!sol)return null;
+  const [a,b,c]=sol;
+  const predict=x=>a*x*x+b*x+c;
+  return{type:'poly2',params:{a,b,c},predict,r2:r2Score(pts,predict),
+    label:`y = ${a.toExponential(2)}x² + ${b.toFixed(3)}x + ${c.toFixed(1)}`};
+}
+
+function fitLog(pts){
+  // y = a*ln(x) + b — requires x > 0
+  const valid=pts.filter(p=>p.x>0);
+  if(valid.length<2)return null;
+  const transformed=valid.map(p=>({x:Math.log(p.x),y:p.y}));
+  const lin=fitLinear(transformed);
+  if(!lin)return null;
+  const {m:a,b}=lin.params;
+  const predict=x=>x>0?a*Math.log(x)+b:NaN;
+  return{type:'log',params:{a,b},predict,r2:r2Score(valid,predict),
+    label:`y = ${a.toFixed(3)}·ln(x) + ${b.toFixed(2)}`};
+}
+
+function fitPower(pts){
+  // y = a*x^b — requires x > 0 and y > 0
+  const valid=pts.filter(p=>p.x>0&&p.y>0);
+  if(valid.length<2)return null;
+  const transformed=valid.map(p=>({x:Math.log(p.x),y:Math.log(p.y)}));
+  const lin=fitLinear(transformed);
+  if(!lin)return null;
+  const {m:b,b:lnA}=lin.params;
+  const a=Math.exp(lnA);
+  const predict=x=>x>0?a*Math.pow(x,b):NaN;
+  return{type:'power',params:{a,b},predict,r2:r2Score(valid,predict),
+    label:`y = ${a.toFixed(3)}·x^${b.toFixed(3)}`};
+}
+
+function fitExp(pts){
+  // y = a*e^(bx) — requires y > 0
+  const valid=pts.filter(p=>p.y>0);
+  if(valid.length<2)return null;
+  const transformed=valid.map(p=>({x:p.x,y:Math.log(p.y)}));
+  const lin=fitLinear(transformed);
+  if(!lin)return null;
+  const {m:b,b:lnA}=lin.params;
+  const a=Math.exp(lnA);
+  const predict=x=>a*Math.exp(b*x);
+  return{type:'exp',params:{a,b},predict,r2:r2Score(valid,predict),
+    label:`y = ${a.toFixed(2)}·e^(${b.toFixed(5)}x)`};
+}
+
+function solve3x3(A,B){
+  // Cramer's rule
+  const det=m=>
+    m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
+   -m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])
+   +m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+  const D=det(A);
+  if(Math.abs(D)<1e-10)return null;
+  const replaceCol=(m,col,vec)=>m.map((row,i)=>row.map((v,j)=>j===col?vec[i]:v));
+  const Dx=det(replaceCol(A,0,B));
+  const Dy=det(replaceCol(A,1,B));
+  const Dz=det(replaceCol(A,2,B));
+  return[Dx/D,Dy/D,Dz/D];
+}
+
+// Try all models, return the one with highest R² (with small bias toward simpler models)
+function bestFit(pts){
+  if(pts.length<2)return null;
+  const candidates=[fitLinear(pts),fitPoly2(pts),fitLog(pts),fitPower(pts),fitExp(pts)]
+    .filter(f=>f&&isFinite(f.r2)&&!isNaN(f.r2));
+  if(!candidates.length)return null;
+  // Sort by R² descending; prefer simpler model if R² very close (within 0.01)
+  candidates.sort((a,b)=>b.r2-a.r2);
+  return candidates[0];
+}
+
+function bestFitDataset(pts,color){
+  const fit=bestFit(pts);
+  if(!fit)return null;
+  const xmin=Math.min(...pts.map(p=>p.x));
+  const xmax=Math.max(...pts.map(p=>p.x));
+  const steps=30;
+  const curve=[];
+  for(let i=0;i<=steps;i++){
+    const x=xmin+(xmax-xmin)*i/steps;
+    const y=fit.predict(x);
+    if(isFinite(y)) curve.push({x,y});
+  }
+  return{
+    dataset:{
+      type:'line',
+      label:'Trend',
+      data:curve,
+      borderColor:color,
+      borderDash:[6,4],
+      borderWidth:1.5,
+      pointRadius:0,
+      fill:false,
+      tension:.2,
+      parsing:false,
+    },
+    fit
+  };
+}
+
 function linearRegression(pts){
   const n=pts.length;
   if(n<2)return null;
@@ -1844,21 +1982,30 @@ function linearRegression(pts){
   const sy=pts.reduce((s,p)=>s+p.y,0);
   const sxy=pts.reduce((s,p)=>s+p.x*p.y,0);
   const sxx=pts.reduce((s,p)=>s+p.x*p.x,0);
+  const syy=pts.reduce((s,p)=>s+p.y*p.y,0);
   const denom=n*sxx-sx*sx;
   if(denom===0)return null;
   const m=(n*sxy-sx*sy)/denom;
   const b=(sy-m*sx)/n;
   const xmin=Math.min(...pts.map(p=>p.x));
   const xmax=Math.max(...pts.map(p=>p.x));
-  return[{x:xmin,y:m*xmin+b},{x:xmax,y:m*xmax+b}];
+  // R² calculation
+  const yMean=sy/n;
+  const ssTot=pts.reduce((s,p)=>s+Math.pow(p.y-yMean,2),0);
+  const ssRes=pts.reduce((s,p)=>s+Math.pow(p.y-(m*p.x+b),2),0);
+  const r2=ssTot>0?1-(ssRes/ssTot):0;
+  return{
+    line:[{x:xmin,y:m*xmin+b},{x:xmax,y:m*xmax+b}],
+    m,b,r2
+  };
 }
 function trendDataset(pts,color){
-  const line=linearRegression(pts);
-  if(!line)return null;
+  const reg=linearRegression(pts);
+  if(!reg)return null;
   return{
     type:'line',
     label:'Trend',
-    data:line,
+    data:reg.line,
     borderColor:color,
     borderDash:[6,4],
     borderWidth:1.5,
@@ -1867,6 +2014,11 @@ function trendDataset(pts,color){
     tension:0,
     parsing:false,
   };
+}
+function regressionLabel(reg, xName='x', yName='y', decY=0, decX=0){
+  if(!reg)return '';
+  const sign=reg.b>=0?'+':'-';
+  return `y = ${reg.m.toFixed(4)}x ${sign} ${Math.abs(reg.b).toFixed(decY)}  ·  R² = ${reg.r2.toFixed(3)}`;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1901,40 +2053,44 @@ function renderTrending(){
   // 1. Total Electricity vs RNS
   destroyChart('trend-elec-rns');
   const pts1=pts.map(p=>({x:p.metrics.rns,y:p.metrics.totalElec}));
-  const trend1=trendDataset(pts1,'rgba(59,130,246,.5)');
+  const fit1=bestFitDataset(pts1,'rgba(59,130,246,.6)');
+  document.querySelector('#chart-trend-elec-rns').closest('.card').querySelector('.card-sub').textContent=fit1?`${fit1.fit.label} · R² = ${fit1.fit.r2.toFixed(3)}`:'';
   charts['trend-elec-rns']=new Chart(document.getElementById('chart-trend-elec-rns').getContext('2d'),{
     type:'scatter',
     data:{datasets:[
       {...scatterDS(pts1,'#3b82f6'),label:'Total Electricity',datalabels:{display:false}},
-      ...(trend1?[trend1]:[])
+      ...(fit1?[fit1.dataset]:[])
     ]},
     options:{...scatterOpts('RNS','Total Electricity (kWh)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Trend'?'':(`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, Elec=${Math.round(c.parsed.y)}`)}},annotation:{}}},
   });
   // 2. Cooling Load vs RNS
   destroyChart('trend-cooling-rns');
   const pts2=pts.map(p=>({x:p.metrics.rns,y:p.billing.reduce((s,r)=>s+r.cooling,0)}));
-  const trend2=trendDataset(pts2,'rgba(6,182,212,.5)');
+  const fit2=bestFitDataset(pts2,'rgba(6,182,212,.6)');
+  document.querySelector('#chart-trend-cooling-rns').closest('.card').querySelector('.card-sub').textContent=fit2?`${fit2.fit.label} · R² = ${fit2.fit.r2.toFixed(3)}`:'';
   charts['trend-cooling-rns']=new Chart(document.getElementById('chart-trend-cooling-rns').getContext('2d'),{
     type:'scatter',
-    data:{datasets:[{...scatterDS(pts2,'#06b6d4'),label:'Cooling vs RNS'},...(trend2?[trend2]:[])]},
+    data:{datasets:[{...scatterDS(pts2,'#06b6d4'),label:'Cooling vs RNS'},...(fit2?[fit2.dataset]:[])]},
     options:{...scatterOpts('RNS','Cooling Load (TRh)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Trend'?'':`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, Cooling=${Math.round(c.parsed.y)}`}}}}
   });
   // 3. Energy Per Room vs RNS
   destroyChart('trend-epr-rns');
   const pts3=pts.map(p=>({x:p.metrics.rns,y:p.metrics.rns>0?+(p.metrics.totalElec/p.metrics.rns).toFixed(2):0}));
-  const trend3=trendDataset(pts3,'rgba(139,92,246,.5)');
+  const fit3=bestFitDataset(pts3,'rgba(139,92,246,.6)');
+  document.querySelector('#chart-trend-epr-rns').closest('.card').querySelector('.card-sub').textContent=fit3?`${fit3.fit.label} · R² = ${fit3.fit.r2.toFixed(3)}`:'';
   charts['trend-epr-rns']=new Chart(document.getElementById('chart-trend-epr-rns').getContext('2d'),{
     type:'scatter',
-    data:{datasets:[{...scatterDS(pts3,'#8b5cf6'),label:'EPR vs RNS'},...(trend3?[trend3]:[])]},
+    data:{datasets:[{...scatterDS(pts3,'#8b5cf6'),label:'EPR vs RNS'},...(fit3?[fit3.dataset]:[])]},
     options:{...scatterOpts('RNS','Energy Per Room (kWh/RNS)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Trend'?'':`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: RNS=${c.parsed.x}, EPR=${c.parsed.y}`}}}}
   });
   // 4. Cooling Load vs Plant Efficiency
   destroyChart('trend-eff-cooling');
   const pts4=pts.map(p=>{const b=p.billing;const tc=b.reduce((s,r)=>s+r.cooling,0);const tp=b.reduce((s,r)=>s+r.totalPlant,0);return{x:Math.round(tc),y:tc>0?+(tp/tc).toFixed(4):0};});
-  const trend4=trendDataset(pts4,'rgba(16,185,129,.5)');
+  const fit4=bestFitDataset(pts4,'rgba(16,185,129,.6)');
+  document.querySelector('#chart-trend-eff-cooling').closest('.card').querySelector('.card-sub').textContent=fit4?`${fit4.fit.label} · R² = ${fit4.fit.r2.toFixed(3)}`:'';
   charts['trend-eff-cooling']=new Chart(document.getElementById('chart-trend-eff-cooling').getContext('2d'),{
     type:'scatter',
-    data:{datasets:[{...scatterDS(pts4,'#10b981'),label:'Eff vs Cooling'},...(trend4?[trend4]:[])]},
+    data:{datasets:[{...scatterDS(pts4,'#10b981'),label:'Eff vs Cooling'},...(fit4?[fit4.dataset]:[])]},
     options:{...scatterOpts('Cooling Load (TRh)','Plant Efficiency (kW/TR)'),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Trend'?'':`${pts[c.dataIndex]?periodLabel(pts[c.dataIndex].period):''}: Cooling=${c.parsed.x}, Eff=${c.parsed.y}`}}}}
   });
 }
