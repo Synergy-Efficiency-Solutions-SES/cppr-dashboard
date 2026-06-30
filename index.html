@@ -719,6 +719,17 @@ tr:hover td{background:rgba(10,61,124,.03)}
           <label style="font-size:11px;color:var(--muted);font-weight:600">Y axis</label>
           <select id="trend-y-axis" onchange="renderCustomTrend()" style="background:#fff;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 12px;font-size:12px"></select>
         </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:11px;color:var(--muted);font-weight:600">Model</label>
+          <select id="trend-model" onchange="renderCustomTrend()" style="background:#fff;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 12px;font-size:12px">
+            <option value="auto">Auto (best fit)</option>
+            <option value="linear">Linear</option>
+            <option value="poly2">Polynomial (degree 2)</option>
+            <option value="log">Logarithmic</option>
+            <option value="power">Power</option>
+            <option value="exp">Exponential</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -1989,8 +2000,13 @@ function solve3x3(A,B){
 }
 
 // Try all models, return the one with highest R² (with small bias toward simpler models)
-function bestFit(pts){
+function bestFit(pts, forceModel){
   if(pts.length<2)return null;
+  const fitters={linear:fitLinear,poly2:fitPoly2,log:fitLog,power:fitPower,exp:fitExp};
+  if(forceModel && forceModel!=='auto' && fitters[forceModel]){
+    const f=fitters[forceModel](pts);
+    return (f&&isFinite(f.r2)&&!isNaN(f.r2)) ? f : null;
+  }
   const candidates=[fitLinear(pts),fitPoly2(pts),fitLog(pts),fitPower(pts),fitExp(pts)]
     .filter(f=>f&&isFinite(f.r2)&&!isNaN(f.r2));
   if(!candidates.length)return null;
@@ -1999,8 +2015,8 @@ function bestFit(pts){
   return candidates[0];
 }
 
-function bestFitDataset(pts,color){
-  const fit=bestFit(pts);
+function bestFitDataset(pts,color,forceModel){
+  const fit=bestFit(pts,forceModel);
   if(!fit)return null;
   const xmin=Math.min(...pts.map(p=>p.x));
   const xmax=Math.max(...pts.map(p=>p.x));
@@ -2147,7 +2163,7 @@ function trendScatterDS(data,color){
   return{type:'scatter',data,backgroundColor:color,pointRadius:6,pointHoverRadius:8,pointStyle:'circle'};
 }
 
-function renderSingleTrendChart(canvasId, subId, rows, xKey, yKey, xLabel, yLabel, color){
+function renderSingleTrendChart(canvasId, subId, rows, xKey, yKey, xLabel, yLabel, color, forceModel){
   destroyChart(canvasId);
   const pts=rows.filter(r=>typeof r[xKey]==='number'&&typeof r[yKey]==='number'&&!isNaN(r[xKey])&&!isNaN(r[yKey])).map(r=>({x:+r[xKey].toFixed(4),y:+r[yKey].toFixed(4)}));
   const subEl=document.getElementById(subId);
@@ -2157,8 +2173,8 @@ function renderSingleTrendChart(canvasId, subId, rows, xKey, yKey, xLabel, yLabe
     if(subEl) subEl.textContent='Not enough data points';
     return null;
   }
-  const fit=bestFitDataset(pts,color);
-  if(subEl) subEl.textContent=fit?`${fit.fit.label} · R² = ${fit.fit.r2.toFixed(3)}`:'';
+  const fit=bestFitDataset(pts,color,forceModel);
+  if(subEl) subEl.textContent=fit?`${fit.fit.label} · R² = ${fit.fit.r2.toFixed(3)}`:(forceModel&&forceModel!=='auto'?'Model could not be fit to this data':'');
   charts[canvasId]=new Chart(canvas.getContext('2d'),{
     type:'scatter',
     data:{datasets:[{...trendScatterDS(pts,color),label:'Data'},...(fit?[fit.dataset]:[])]},
@@ -2261,13 +2277,15 @@ function renderCustomTrend(rowsArg){
   const rows=rowsArg||buildTrendingRows();
   const selX=document.getElementById('trend-x-axis');
   const selY=document.getElementById('trend-y-axis');
+  const selModel=document.getElementById('trend-model');
   if(!selX||!selY||!selX.value||!selY.value)return;
   const xKey=selX.value, yKey=selY.value;
+  const forceModel=selModel?selModel.value:'auto';
   const xMeta=TREND_METRICS.find(m=>m.key===xKey);
   const yMeta=TREND_METRICS.find(m=>m.key===yKey);
   const titleEl=document.getElementById('trend-custom-title');
   if(titleEl) titleEl.textContent=`${yMeta?.label||yKey} vs ${xMeta?.label||xKey}`;
-  renderSingleTrendChart('chart-trend-custom','trend-custom-sub',rows,xKey,yKey,xMeta?.label||xKey,yMeta?.label||yKey,'#7c3aed');
+  renderSingleTrendChart('chart-trend-custom','trend-custom-sub',rows,xKey,yKey,xMeta?.label||xKey,yMeta?.label||yKey,'#7c3aed',forceModel);
 
   // Also refresh Spearman and bin analysis using the same X/Y selection
   renderSpearmanChart(rows,xKey,yKey,xMeta?.label||xKey,yMeta?.label||yKey);
