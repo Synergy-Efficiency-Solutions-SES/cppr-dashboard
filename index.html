@@ -725,6 +725,17 @@ tr:hover td{background:rgba(10,61,124,.03)}
       <div class="card-head"><div class="card-title" id="trend-custom-title">Custom Correlation</div><div class="card-sub" id="trend-custom-sub"></div></div>
       <div class="card-body"><div class="chart-h300"><canvas id="chart-trend-custom"></canvas></div></div>
     </div>
+
+    <div class="chart-grid grid-2" style="margin-top:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Spearman Correlation</div><div class="card-sub" id="trend-spearman-sub">Rank-based — works on non-linear relationships</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-trend-spearman"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Group Analysis (bins)</div><div class="card-sub" id="trend-bins-sub">Average Y per X range — find the optimal zone</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-trend-bins"></canvas></div></div>
+      </div>
+    </div>
   </div>
   <!-- PAGE: DAILY DATA -->
   <div class="page" id="page-raw">
@@ -1888,6 +1899,19 @@ function fitLinear(pts){
     label:`y = ${m.toFixed(4)}x ${b>=0?'+':'-'} ${Math.abs(b).toFixed(2)}`};
 }
 
+function formatCoef(n){
+  // Avoid scientific notation, use enough decimals to show meaningful digits
+  if(n===0)return '0';
+  const abs=Math.abs(n);
+  let decimals=2;
+  if(abs<0.0001) decimals=8;
+  else if(abs<0.001) decimals=7;
+  else if(abs<0.01) decimals=6;
+  else if(abs<0.1) decimals=5;
+  else if(abs<1) decimals=4;
+  return n.toFixed(decimals);
+}
+
 function fitPoly2(pts){
   // y = ax² + bx + c — least squares via normal equations
   const n=pts.length;
@@ -1905,7 +1929,7 @@ function fitPoly2(pts){
   const [a,b,c]=sol;
   const predict=x=>a*x*x+b*x+c;
   return{type:'poly2',params:{a,b,c},predict,r2:r2Score(pts,predict),
-    label:`y = ${a.toExponential(2)}x² + ${b.toFixed(3)}x + ${c.toFixed(1)}`};
+    label:`y = ${formatCoef(a)}x² ${b>=0?'+':'-'} ${Math.abs(b).toFixed(2)}x ${c>=0?'+':'-'} ${Math.abs(c).toFixed(0)}`};
 }
 
 function fitLog(pts){
@@ -2244,6 +2268,149 @@ function renderCustomTrend(rowsArg){
   const titleEl=document.getElementById('trend-custom-title');
   if(titleEl) titleEl.textContent=`${yMeta?.label||yKey} vs ${xMeta?.label||xKey}`;
   renderSingleTrendChart('chart-trend-custom','trend-custom-sub',rows,xKey,yKey,xMeta?.label||xKey,yMeta?.label||yKey,'#7c3aed');
+
+  // Also refresh Spearman and bin analysis using the same X/Y selection
+  renderSpearmanChart(rows,xKey,yKey,xMeta?.label||xKey,yMeta?.label||yKey);
+  renderBinAnalysisChart(rows,xKey,yKey,xMeta?.label||xKey,yMeta?.label||yKey);
+}
+
+// ═══════════════════════════════════════════════════
+// SPEARMAN RANK CORRELATION
+// Measures monotonic relationship strength (doesn't assume linearity)
+// ═══════════════════════════════════════════════════
+function rankArray(arr){
+  // Returns rank (1-based, average rank for ties) for each value in arr
+  const indexed=arr.map((v,i)=>({v,i}));
+  indexed.sort((a,b)=>a.v-b.v);
+  const ranks=new Array(arr.length);
+  let i=0;
+  while(i<indexed.length){
+    let j=i;
+    while(j+1<indexed.length && indexed[j+1].v===indexed[i].v) j++;
+    const avgRank=(i+j)/2+1; // average rank for tied values
+    for(let k=i;k<=j;k++) ranks[indexed[k].i]=avgRank;
+    i=j+1;
+  }
+  return ranks;
+}
+
+function spearmanCorrelation(pts){
+  const n=pts.length;
+  if(n<3)return null;
+  const xRanks=rankArray(pts.map(p=>p.x));
+  const yRanks=rankArray(pts.map(p=>p.y));
+  // Pearson correlation on the ranks = Spearman's rho
+  const meanX=xRanks.reduce((s,v)=>s+v,0)/n;
+  const meanY=yRanks.reduce((s,v)=>s+v,0)/n;
+  let num=0,denX=0,denY=0;
+  for(let i=0;i<n;i++){
+    const dx=xRanks[i]-meanX, dy=yRanks[i]-meanY;
+    num+=dx*dy; denX+=dx*dx; denY+=dy*dy;
+  }
+  const denom=Math.sqrt(denX*denY);
+  const rho=denom>0?num/denom:0;
+  // Approximate p-value via t-distribution (two-tailed)
+  const t=rho*Math.sqrt((n-2)/(1-rho*rho+1e-12));
+  const df=n-2;
+  // Simple approximation: p < 0.05 roughly when |t| > 2 for moderate df
+  const significant=Math.abs(t)>2.0;
+  return{rho,n,significant};
+}
+
+function renderSpearmanChart(rows,xKey,yKey,xLabel,yLabel){
+  destroyChart('trend-spearman');
+  const canvas=document.getElementById('chart-trend-spearman');
+  const subEl=document.getElementById('trend-spearman-sub');
+  if(!canvas)return;
+  const pts=rows.filter(r=>typeof r[xKey]==='number'&&typeof r[yKey]==='number'&&!isNaN(r[xKey])&&!isNaN(r[yKey])).map(r=>({x:r[xKey],y:r[yKey]}));
+  if(pts.length<3){
+    if(subEl) subEl.textContent='Not enough data points';
+    return;
+  }
+  const sp=spearmanCorrelation(pts);
+  const strength=Math.abs(sp.rho)>0.7?'strong':Math.abs(sp.rho)>0.4?'moderate':'weak';
+  const direction=sp.rho>0?'increases':'decreases';
+  if(subEl) subEl.textContent=`ρ = ${sp.rho.toFixed(3)} (${strength}) · ${sp.significant?'significant':'not significant'} · n=${sp.n}`;
+  charts['trend-spearman']=new Chart(canvas.getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[{...trendScatterDS(pts,'#0a3d7c'),label:'Data'}]},
+    options:{
+      ...trendScatterOpts(xLabel,yLabel),
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>`(${c.parsed.x}, ${c.parsed.y})`}},
+        subtitle:{display:true,text:`When ${xLabel} goes up, ${yLabel} tends to ${direction}`,color:'#64748b',font:{size:10,style:'italic'}}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// GROUP ANALYSIS (BINS)
+// Splits X range into bins, shows average Y per bin — finds optimal zone
+// ═══════════════════════════════════════════════════
+function binAnalysis(pts, nBins=5){
+  if(pts.length<nBins)return null;
+  const xs=pts.map(p=>p.x);
+  const xmin=Math.min(...xs), xmax=Math.max(...xs);
+  if(xmax===xmin)return null;
+  const binWidth=(xmax-xmin)/nBins;
+  const bins=Array.from({length:nBins},(_,i)=>({
+    label:`${(xmin+i*binWidth).toFixed(1)}–${(xmin+(i+1)*binWidth).toFixed(1)}`,
+    values:[]
+  }));
+  for(const p of pts){
+    let idx=Math.floor((p.x-xmin)/binWidth);
+    if(idx>=nBins) idx=nBins-1;
+    if(idx<0) idx=0;
+    bins[idx].values.push(p.y);
+  }
+  return bins.map(b=>({
+    label:b.label,
+    mean:b.values.length?b.values.reduce((s,v)=>s+v,0)/b.values.length:null,
+    min:b.values.length?Math.min(...b.values):null,
+    max:b.values.length?Math.max(...b.values):null,
+    count:b.values.length
+  })).filter(b=>b.count>0);
+}
+
+function renderBinAnalysisChart(rows,xKey,yKey,xLabel,yLabel){
+  destroyChart('trend-bins');
+  const canvas=document.getElementById('chart-trend-bins');
+  const subEl=document.getElementById('trend-bins-sub');
+  if(!canvas)return;
+  const pts=rows.filter(r=>typeof r[xKey]==='number'&&typeof r[yKey]==='number'&&!isNaN(r[xKey])&&!isNaN(r[yKey])).map(r=>({x:r[xKey],y:r[yKey]}));
+  const bins=binAnalysis(pts,5);
+  if(!bins||bins.length<2){
+    if(subEl) subEl.textContent='Not enough data points for grouping';
+    return;
+  }
+  // Find the bin with lowest mean (useful for efficiency-type metrics) — just informational
+  const bestBin=bins.reduce((best,b)=>(best===null||b.mean<best.mean)?b:best,null);
+  if(subEl) subEl.textContent=`Lowest average in range ${bestBin.label} (${xLabel})`;
+  charts['trend-bins']=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:bins.map(b=>b.label),
+      datasets:[{
+        label:`Average ${yLabel}`,
+        data:bins.map(b=>+b.mean.toFixed(4)),
+        backgroundColor:'rgba(45,138,78,.6)',
+        borderRadius:4,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{
+        const b=bins[c.dataIndex];
+        return[`Avg: ${b.mean.toFixed(3)}`,`Min: ${b.min.toFixed(3)} / Max: ${b.max.toFixed(3)}`,`n=${b.count}`];
+      }}}},
+      scales:{
+        x:{title:{display:true,text:xLabel,color:'#64748b',font:{size:10}},ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},
+        y:{title:{display:true,text:`Average ${yLabel}`,color:'#64748b',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(209,217,230,.8)'}}
+      }
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════
