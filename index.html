@@ -219,7 +219,6 @@ tr:hover td{background:rgba(10,61,124,.03)}
   <!-- FILTERS BAR -->
   <div class="filters-bar">
     <span class="filters-label">Filters:</span>
-    <select id="sel-client" onchange="filterDashboard()"><option value="">All Clients</option></select>
     <select id="sel-year" onchange="onYearChange()"><option value="">All Years</option></select>
     <select id="sel-month" onchange="filterDashboard()"><option value="">All Months</option></select>
     <span id="filter-info" style="font-size:11px;color:var(--muted);margin-left:auto"></span>
@@ -946,13 +945,10 @@ async function buildDashboard(){
   }
   setProgress(100,'Building dashboard...');
 
-  const clients=[...new Set(allData.map(d=>d.client))].sort();
   const periods=[...new Set(allData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
   const years=[...new Set(periods.map(p=>p.split('-')[0]))].sort();
-  const selC=document.getElementById('sel-client');
   const selY=document.getElementById('sel-year');
   const selM=document.getElementById('sel-month');
-  selC.innerHTML='<option value="">All Clients</option>'+clients.map(c=>`<option value="${c}">${c}</option>`).join('');
   selY.innerHTML='<option value="">All Years</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
   selM.innerHTML='<option value="">All Months</option>'+periods.map(p=>`<option value="${p}">${periodLabel(p)||p}</option>`).join('');
 
@@ -977,7 +973,7 @@ function onYearChange(){
   filterDashboard();
 }
 function filterDashboard(){
-  const client=document.getElementById('sel-client').value;
+  const client='';
   const month=document.getElementById('sel-month').value;
   const year=document.getElementById('sel-year').value;
   filteredData=allData.filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year))&&(!month||d.period===month));
@@ -1215,7 +1211,7 @@ function renderDetailed(){
 
   // Efficiency compare: always use last 2 periods from allData for the selected client
   // Ignore month filter — always show "this month vs last month"
-  const client=document.getElementById('sel-client').value;
+  const client='';
   const year=document.getElementById('sel-year').value;
   const month=document.getElementById('sel-month').value;
 
@@ -1376,7 +1372,7 @@ function renderDetailed(){
 // MAIN CH PAGE — Dynamic chillers
 // ═══════════════════════════════════════════════════
 function renderMainCH(){
-  const client=document.getElementById('sel-client').value;
+  const client='';
   const year=document.getElementById('sel-year').value;
   const month=document.getElementById('sel-month').value;
   const allPeriodsBase=[...new Set(allData.filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year))).map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
@@ -1699,7 +1695,7 @@ function mergeWeeklyData(weekly){
 // WEEKLY TREND PAGE
 // ═══════════════════════════════════════════════════
 function renderWeeklyTrend(){
-  const client=document.getElementById('sel-client').value;
+  const client='';
   const year=document.getElementById('sel-year').value;
 
   // Get clients and their weekly data separately
@@ -1883,7 +1879,7 @@ function renderTrending(){
 // HELPERS
 // ═══════════════════════════════════════════════════
 function getPeriodHelpers(){
-  const client=document.getElementById('sel-client').value;
+  const client='';
   const year=document.getElementById('sel-year').value;
   const month=document.getElementById('sel-month').value;
   const base=allData.filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year)));
@@ -1897,7 +1893,7 @@ function getPeriodHelpers(){
 }
 
 function getWeeklyForFilter(){
-  const client=document.getElementById('sel-client').value;
+  const client='';
   const year=document.getElementById('sel-year').value;
   const raw=filteredData
     .filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year)))
