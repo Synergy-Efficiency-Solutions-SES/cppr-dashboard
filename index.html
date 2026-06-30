@@ -218,6 +218,7 @@ tr:hover td{background:rgba(10,61,124,.03)}
 <div id="dashboard">
   <!-- FILTERS BAR -->
   <div class="filters-bar">
+    <span id="client-badge" style="font-size:12px;font-weight:700;color:var(--ses-blue);background:rgba(10,61,124,.08);padding:5px 12px;border-radius:6px;display:none">👤 <span id="client-name"></span></span>
     <span class="filters-label">Filters:</span>
     <select id="sel-year" onchange="onYearChange()"><option value="">All Years</option></select>
     <select id="sel-month" onchange="filterDashboard()"><option value="">All Months</option></select>
@@ -725,7 +726,7 @@ tr:hover td{background:rgba(10,61,124,.03)}
 let allData = [];
 let filteredData = [];
 let charts = {};
-let currentPage = 'monthly';
+let currentPage = 'home';
 const pendingFiles = [];
 const CLIENT_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
 const clientColorMap = {};
@@ -1008,14 +1009,21 @@ async function buildDashboard(){
   selY.innerHTML='<option value="">All Years</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
   selM.innerHTML='<option value="">All Months</option>'+periods.map(p=>`<option value="${p}">${periodLabel(p)||p}</option>`).join('');
 
+  // Show client name badge
+  const clientNames=[...new Set(allData.map(d=>d.client))].filter(c=>c&&c!=='Inconnu');
+  if(clientNames.length){
+    document.getElementById('client-name').textContent=clientNames.join(', ');
+    document.getElementById('client-badge').style.display='inline-flex';
+  }
+
   document.getElementById('drop-zone').style.display='none';
   document.getElementById('dashboard').style.display='block';
   document.getElementById('page-tabs').style.display='flex';
-  // Go straight to Monthly Overview after loading
-  currentPage='monthly';
+  // Stay on Home page after loading — user navigates manually
+  currentPage='home';
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-monthly').classList.add('active');
-  document.querySelectorAll('.page-tab').forEach((t,i)=>t.classList.toggle('active',i===1));
+  document.getElementById('page-home').classList.add('active');
+  document.querySelectorAll('.page-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
   filterDashboard();
   showLoader(false);
 }
