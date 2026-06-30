@@ -1372,15 +1372,23 @@ function renderDetailed(){
   const lastPer=allPeriodsBase[thisIdx-1]||null;
   const last2Per=allPeriodsBase[thisIdx-2]||null;
 
-  // ── Efficiency comparison chart ──────────────────────────────
+  // ── Efficiency comparison chart — per component + Total ──────────────
   destroyChart('eff-compare');
   const datasets=[];
-  if(p1data.length) datasets.push({label:periodLabel(lastPeriod)||lastPeriod,data:effBreakdownTotal(p1data),backgroundColor:'rgba(100,116,139,.5)',borderRadius:4});
-  if(p2data.length) datasets.push({label:periodLabel(thisPeriod)||thisPeriod,data:effBreakdownTotal(p2data),backgroundColor:'rgba(59,130,246,.7)',borderRadius:4});
+  if(p1data.length){
+    const v1=effBreakdownTotal(p1data);
+    const total1=v1.reduce((s,v)=>s+v,0);
+    datasets.push({label:periodLabel(lastPeriod)||lastPeriod,data:[...v1,total1],backgroundColor:'rgba(100,116,139,.5)',borderRadius:4});
+  }
+  if(p2data.length){
+    const v2=effBreakdownTotal(p2data);
+    const total2=v2.reduce((s,v)=>s+v,0);
+    datasets.push({label:periodLabel(thisPeriod)||thisPeriod,data:[...v2,total2],backgroundColor:'rgba(10,61,124,.75)',borderRadius:4});
+  }
   if(datasets.length){
     charts['eff-compare']=new Chart(document.getElementById('chart-eff-compare').getContext('2d'),{
       type:'bar',
-      data:{labels:keyLabels,datasets},
+      data:{labels:[...keyLabels,'Total'],datasets},
       options:{...chartOpts({y:'kW/TR'}),indexAxis:'y'}
     });
   }
