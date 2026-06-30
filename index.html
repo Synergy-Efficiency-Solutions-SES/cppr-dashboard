@@ -305,27 +305,83 @@ tr:hover td{background:rgba(10,61,124,.03)}
         <div style="font-size:13px;color:var(--muted);margin-top:6px">Everything you need to monitor your chiller plant performance</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;max-width:1100px;margin:0 auto">
-        ${[
-          {icon:'📋',title:'Monthly Overview',desc:'KPIs, ASHRAE benchmark, weekly charts, energy share breakdown',color:'#0a3d7c',page:'monthly'},
-          {icon:'📈',title:'Yearly Overview',desc:'Accumulated stats, monthly trends, cooling & efficiency evolution',color:'#1a5fa3',page:'yearly'},
-          {icon:'❄️',title:'Chiller Plant',desc:'Efficiency comparison vs last month, part-load curves, shift analysis',color:'#2d8a4e',page:'detailed'},
-          {icon:'🔩',title:'Main Chiller(s)',desc:'Dynamic per-chiller part-load curves with approach & flow data',color:'#1a6b3a',page:'maincH'},
-          {icon:'💧',title:'CHWP',desc:'Chilled water pump efficiency, flow & evaporator approach weekly',color:'#0a3d7c',page:'chwp'},
-          {icon:'🌊',title:'CWP',desc:'Condenser water pump efficiency, condenser flow & approach',color:'#1a5fa3',page:'cwp'},
-          {icon:'🌡️',title:'CT',desc:'Cooling tower efficiency, approach, TDS, pH & COC weekly',color:'#2d8a4e',page:'ct'},
-          {icon:'💬',title:'Comments',desc:'Detailed performance comments extracted from Excel reports',color:'#64748b',page:'comments'},
-          {icon:'📅',title:'Weekly Trend',desc:'All weekly parameters over the full year in one view',color:'#d97706',page:'weekly'},
-          {icon:'📉',title:'Trending',desc:'Scatter plot correlations: RNS vs electricity, cooling, efficiency',color:'#7c3aed',page:'trending'},
-          {icon:'📆',title:'Daily Data',desc:'Full billing data table with all daily readings',color:'#64748b',page:'raw'},
-        ].map(p=>`
-          <div onclick="if(filteredData&&filteredData.length){showPageByName('${p.page}')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-              <div style="width:36px;height:36px;background:${p.color}18;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">${p.icon}</div>
-              <div style="font-weight:700;color:var(--ses-dark);font-size:13px">${p.title}</div>
-            </div>
-            <div style="font-size:11px;color:var(--muted);line-height:1.6">${p.desc}</div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('monthly')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#0a3d7c18;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">📋</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Monthly Overview</div>
           </div>
-        `).join('')}
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">KPIs, ASHRAE benchmark, weekly charts, energy share breakdown</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('yearly')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#1a5fa318;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">📈</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Yearly Overview</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">Accumulated stats, monthly trends, cooling & efficiency evolution</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('detailed')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#2d8a4e18;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">❄️</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Chiller Plant</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">Efficiency comparison vs last month, part-load curves, shift analysis</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('maincH')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#1a6b3a18;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">🔩</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Main Chiller(s)</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">Dynamic per-chiller part-load curves with approach & flow data</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('chwp')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#0a3d7c18;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">💧</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">CHWP</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">Chilled water pump efficiency, flow & evaporator approach weekly</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('cwp')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#1a5fa318;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">🌊</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">CWP</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">Condenser water pump efficiency, condenser flow & approach</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('ct')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#2d8a4e18;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">🌡️</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">CT</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">Cooling tower efficiency, approach, TDS, pH & COC weekly</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('comments')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#64748b18;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">💬</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Comments</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">Detailed performance comments extracted from Excel reports</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('weekly')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#d9770618;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">📅</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Weekly Trend</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">All weekly parameters over the full year in one view</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('trending')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#7c3aed18;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">📉</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Trending</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">Scatter plot correlations: RNS vs electricity, cooling, efficiency</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('raw')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#64748b18;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">📆</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Daily Data</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">Full billing data table with all daily readings</div>
+        </div>
       </div>
     </div>
 
@@ -337,7 +393,7 @@ tr:hover td{background:rgba(10,61,124,.03)}
   </div>
 
   <!-- PAGE: MONTHLY OVERVIEW -->
-  <div class="page active" id="page-monthly">
+  <div class="page" id="page-monthly">
     <div class="section-title">Cooling as a Service — Project Parameters</div>
     <div class="kpi-grid" id="kpi-monthly"></div>
 
