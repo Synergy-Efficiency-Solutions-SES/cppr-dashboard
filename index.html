@@ -1180,7 +1180,12 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
 
   <!-- PAGE: CHWP -->
   <div class="page" id="page-chwp">
-    <div class="section-title">Detailed Performance: Evaporator Side (CHWP)</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="section-title" style="margin:0">Detailed Performance: Evaporator Side (CHWP)</div>
+      <select id="sel-chwp" onchange="renderCHWP()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer">
+        <option value="">All CHWP</option>
+      </select>
+    </div>
     <div class="chart-grid grid-2" style="margin-bottom:16px">
       <div class="card">
         <div class="card-head"><div class="card-title">CHWP Part-Load Efficiency</div><div class="card-sub">Occurrence % + Efficiency kW/TR vs Part Load</div></div>
@@ -1205,7 +1210,12 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
 
   <!-- PAGE: CWP -->
   <div class="page" id="page-cwp">
-    <div class="section-title">Detailed Performance: Condenser Side (CWP)</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="section-title" style="margin:0">Detailed Performance: Condenser Side (CWP)</div>
+      <select id="sel-cwp" onchange="renderCWP()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer">
+        <option value="">All CWP</option>
+      </select>
+    </div>
     <div class="chart-grid grid-2" style="margin-bottom:16px">
       <div class="card">
         <div class="card-head"><div class="card-title">CWP Part-Load Efficiency</div><div class="card-sub">Occurrence % + Efficiency kW/TR vs Part Load</div></div>
@@ -1230,7 +1240,12 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
 
   <!-- PAGE: CT -->
   <div class="page" id="page-ct">
-    <div class="section-title">Detailed Performance: Cooling Tower</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="section-title" style="margin:0">Detailed Performance: Cooling Tower</div>
+      <select id="sel-ct" onchange="renderCT()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer">
+        <option value="">All CT</option>
+      </select>
+    </div>
     <div class="chart-grid grid-2" style="margin-bottom:16px">
       <div class="card">
         <div class="card-head"><div class="card-title">CT Part-Load Efficiency</div><div class="card-sub">Occurrence % + Efficiency kW/TR vs Part Load</div></div>
@@ -1711,11 +1726,26 @@ async function parseFile(file,client){
             chillerSheets['CH '+m[1]]=rows;
           }
         }
-        // CHWP/CWP/CT part-load
-        const parsePartLoad=(sheetName)=>{const s=wb.Sheets[sheetName];if(!s)return[];const d=XLSX.utils.sheet_to_json(s,{header:1,defval:null,raw:true});return d.slice(1).filter(r=>r[0]).map(r=>({partLoad:+r[0]||0,occurrence:+r[2]||0,eff:+r[6]||0}));};
-        const partloadCHWP=parsePartLoad('CHWP');
-        const partloadCWP=parsePartLoad('CWP');
-        const partloadCT=parsePartLoad('CT');
+        // CHWP/CWP/CT part-load — dynamic: detect CHWP 1, CHWP 2, CWP 1, CT 1...
+        const parsePartLoadSheet=(s)=>{if(!s)return[];const d=XLSX.utils.sheet_to_json(s,{header:1,defval:null,raw:true});return d.slice(1).filter(r=>r[0]).map(r=>({partLoad:+r[0]||0,occurrence:+r[2]||0,eff:+r[6]||0}));};
+        // Collect all sheets matching CHWP N / CWP N / CT N (with or without number)
+        const chwpSheets={},cwpSheets={},ctSheets={};
+        for(const sn of wb.SheetNames){
+          const norm=sn.trim();
+          // CHWP: matches "CHWP", "CHWP 1", "CHWP 2"...
+          const mCHWP=norm.match(/^CHWP\s*(\d*)$/i);
+          if(mCHWP){const key=mCHWP[1]?'CHWP '+mCHWP[1]:'CHWP 1';chwpSheets[key]=parsePartLoadSheet(wb.Sheets[sn]);}
+          // CWP
+          const mCWP=norm.match(/^CWP\s*(\d*)$/i);
+          if(mCWP){const key=mCWP[1]?'CWP '+mCWP[1]:'CWP 1';cwpSheets[key]=parsePartLoadSheet(wb.Sheets[sn]);}
+          // CT
+          const mCT=norm.match(/^CT\s*(\d*)$/i);
+          if(mCT){const key=mCT[1]?'CT '+mCT[1]:'CT 1';ctSheets[key]=parsePartLoadSheet(wb.Sheets[sn]);}
+        }
+        // Fallback: old keys for backward compat
+        const partloadCHWP=Object.values(chwpSheets)[0]||[];
+        const partloadCWP=Object.values(cwpSheets)[0]||[];
+        const partloadCT=Object.values(ctSheets)[0]||[];
 
         // Raw Data — minute-level readings (Date | Time | CH1..CH3 kW | CHWP | CWP | CT | Aux | Chiller Plant kW | CH1..CH3 TR | Total TR | Approach Cond | Approach Evap | Cond Flow | Evap Flow)
         let rawData=[];
@@ -1751,7 +1781,7 @@ async function parseFile(file,client){
           }
         }
 
-        res({client,period:per||'—',billing,metrics,weekly,partloadPlant,partloadCH1,partloadRef,comments,chillerSheets,partloadCHWP,partloadCWP,partloadCT,rawData});
+        res({client,period:per||'—',billing,metrics,weekly,partloadPlant,partloadCH1,partloadRef,comments,chillerSheets,chwpSheets,cwpSheets,ctSheets,partloadCHWP,partloadCWP,partloadCT,rawData});
       }catch(err){rej(err)}
     };
     r.onerror=rej;
@@ -2129,37 +2159,28 @@ function renderYearly(){
 function renderDetailed(){
   const rows=filteredData.flatMap(d=>d.billing).sort((a,b)=>a.dateSerial-b.dateSerial);
 
-  // Efficiency compare: always use last 2 periods from allData for the selected client
-  // Ignore month filter — always show "this month vs last month"
   const client='';
   const year=document.getElementById('sel-year').value;
   const selectedMonths=getSelectedMonths();
 
-  // Get all periods available (with client+year filter but ignore month)
+  // All periods available (year filter only — ignore month filter so this/last always works)
   const baseData=allData.filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year)));
   const allPeriods=[...new Set(baseData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
 
-  // Determine "this month" and "last month"
-  let thisPeriod, lastPeriod;
-  if(_cm){
-    // Single month selected → this = selected, last = previous in allPeriods
-    thisPeriod=_cm;
-    const idx=allPeriods.indexOf(_cm);
-    lastPeriod=idx>0?allPeriods[idx-1]:null;
-  } else {
-    // Multiple/all months selected → use last 2 available
-    thisPeriod=allPeriods[allPeriods.length-1];
-    lastPeriod=allPeriods[allPeriods.length-2];
-  }
+  // Define _cm first, then use it
+  const _cm=selectedMonths.length===1?selectedMonths[0]:null;
+  const thisIdx=_cm?allPeriods.indexOf(_cm):allPeriods.length-1;
+  const thisPeriod=allPeriods[thisIdx];
+  const lastPeriod=allPeriods[thisIdx-1]||null;
+  const last2Period=allPeriods[thisIdx-2]||null;
+
+  // Aliases used further down
+  const thisPer=thisPeriod;
+  const lastPer=lastPeriod;
+  const last2Per=last2Period;
 
   const p2data=baseData.filter(d=>d.period===thisPeriod);
   const p1data=lastPeriod?baseData.filter(d=>d.period===lastPeriod):[];
-
-  const effBreakdown=(arr)=>{
-    const b=arr.flatMap(d=>d.billing);
-    const cool=Math.max(b.reduce((s,r)=>s+r.cooling,0),1);
-    return ['chiller','chwp','cwp','ct','aux'].map(k=>+(b.reduce((s,r)=>s+r[k],0)/cool).toFixed(2));
-  };
 
   // ── Shared helpers ──────────────────────────────────────────
   const keys=['chiller','chwp','cwp','ct','aux'];
@@ -2170,12 +2191,6 @@ function renderDetailed(){
     return keys.map(k=>b.reduce((s,r)=>s+r[k],0)/cool);
   };
   const getForPeriod=(period,key)=>allData.filter(d=>(!client||d.client===client)&&d.period===period).flatMap(d=>d[key]);
-  const allPeriodsBase=[...new Set(allData.filter(d=>(!client||d.client===client)&&(!year||d.period.startsWith(year))).map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
-  const _cm=selectedMonths.length===1?selectedMonths[0]:null;
-  const thisIdx=_cm?allPeriodsBase.indexOf(_cm):allPeriodsBase.length-1;
-  const thisPer=allPeriodsBase[thisIdx];
-  const lastPer=allPeriodsBase[thisIdx-1]||null;
-  const last2Per=allPeriodsBase[thisIdx-2]||null;
 
   // ── Efficiency comparison chart — per component + Total ──────────────
   destroyChart('eff-compare');
@@ -2422,15 +2437,43 @@ function renderMainCH(){
 function renderCHWP(){
   const weekly=getWeeklyForFilter();
   const{thisPer,lastPer,getData}=getPeriodHelpers();
-  const pl=getData(thisPer,'partloadCHWP');
-  const plLast=lastPer?getData(lastPer,'partloadCHWP'):[];
+
+  // Collect all CHWP sheet names from filtered data
+  const thisPeriodData=allData.filter(d=>d.period===thisPer);
+  const allCHWPNames=[...new Set(thisPeriodData.flatMap(d=>Object.keys(d.chwpSheets||{})))].sort();
+  const selCHWP=document.getElementById('sel-chwp');
+  if(selCHWP){
+    const prev=selCHWP.value;
+    selCHWP.innerHTML='<option value="">All CHWP</option>'+allCHWPNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+    if(allCHWPNames.includes(prev)) selCHWP.value=prev;
+  }
+  const selectedCHWP=selCHWP?selCHWP.value:'';
+
+  // Get part-load data: either selected machine or merged all
+  const getPartLoad=(period,key)=>{
+    const src=allData.filter(d=>d.period===period);
+    if(selectedCHWP) return src.flatMap(d=>(d.chwpSheets||{})[selectedCHWP]||[]);
+    // Merge all CHWP sheets (sum occurrences, weighted avg eff)
+    const byPL={};
+    src.flatMap(d=>Object.values(d.chwpSheets||{})).flat().forEach(r=>{
+      if(!byPL[r.partLoad]) byPL[r.partLoad]={partLoad:r.partLoad,occurrence:0,effSum:0};
+      byPL[r.partLoad].occurrence+=r.occurrence;
+      byPL[r.partLoad].effSum+=r.eff*r.occurrence;
+    });
+    return Object.values(byPL).sort((a,b)=>a.partLoad-b.partLoad).map(r=>({partLoad:r.partLoad,occurrence:r.occurrence,eff:r.occurrence>0?r.effSum/r.occurrence:0}));
+  };
+  const pl=getPartLoad(thisPer);
+  const plLast=lastPer?getPartLoad(lastPer):[];
+
+  const titleSuffix=selectedCHWP?` — ${selectedCHWP}`:'';
+
   // Part Load
   destroyChart('chwp-pl');
   if(pl.length){
     const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
     const ds=[
       {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(6,182,212,.25)',borderRadius:3,yAxisID:'y'},
-      {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:`Current (kW/TR)${titleSuffix}`,data:pl.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
     if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
     charts['chwp-pl']=new Chart(document.getElementById('chart-chwp-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
@@ -2476,14 +2519,38 @@ function renderCHWP(){
 function renderCWP(){
   const weekly=getWeeklyForFilter();
   const{thisPer,lastPer,getData}=getPeriodHelpers();
-  const pl=getData(thisPer,'partloadCWP');
-  const plLast=lastPer?getData(lastPer,'partloadCWP'):[];
+
+  const thisPeriodData=allData.filter(d=>d.period===thisPer);
+  const allCWPNames=[...new Set(thisPeriodData.flatMap(d=>Object.keys(d.cwpSheets||{})))].sort();
+  const selCWP=document.getElementById('sel-cwp');
+  if(selCWP){
+    const prev=selCWP.value;
+    selCWP.innerHTML='<option value="">All CWP</option>'+allCWPNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+    if(allCWPNames.includes(prev)) selCWP.value=prev;
+  }
+  const selectedCWP=selCWP?selCWP.value:'';
+
+  const getPartLoad=(period)=>{
+    const src=allData.filter(d=>d.period===period);
+    if(selectedCWP) return src.flatMap(d=>(d.cwpSheets||{})[selectedCWP]||[]);
+    const byPL={};
+    src.flatMap(d=>Object.values(d.cwpSheets||{})).flat().forEach(r=>{
+      if(!byPL[r.partLoad]) byPL[r.partLoad]={partLoad:r.partLoad,occurrence:0,effSum:0};
+      byPL[r.partLoad].occurrence+=r.occurrence;
+      byPL[r.partLoad].effSum+=r.eff*r.occurrence;
+    });
+    return Object.values(byPL).sort((a,b)=>a.partLoad-b.partLoad).map(r=>({partLoad:r.partLoad,occurrence:r.occurrence,eff:r.occurrence>0?r.effSum/r.occurrence:0}));
+  };
+  const pl=getPartLoad(thisPer);
+  const plLast=lastPer?getPartLoad(lastPer):[];
+  const titleSuffix=selectedCWP?` — ${selectedCWP}`:'';
+
   destroyChart('cwp-pl');
   if(pl.length){
     const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
     const ds=[
       {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(16,185,129,.25)',borderRadius:3,yAxisID:'y'},
-      {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:`Current (kW/TR)${titleSuffix}`,data:pl.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
     if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
     charts['cwp-pl']=new Chart(document.getElementById('chart-cwp-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
@@ -2521,14 +2588,41 @@ function renderCWP(){
 function renderCT(){
   const weekly=getWeeklyForFilter();
   const{thisPer,lastPer,getData}=getPeriodHelpers();
-  const pl=getData(thisPer,'partloadCT');
-  const plLast=lastPer?getData(lastPer,'partloadCT'):[];
+
+  const thisPeriodData=allData.filter(d=>d.period===thisPer);
+  const allCTNames=[...new Set(thisPeriodData.flatMap(d=>Object.keys(d.ctSheets||{})))].sort();
+  const selCT=document.getElementById('sel-ct');
+  if(selCT){
+    const prev=selCT.value;
+    selCT.innerHTML='<option value="">All CT</option>'+allCTNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+    if(allCTNames.includes(prev)) selCT.value=prev;
+  }
+  const selectedCT=selCT?selCT.value:'';
+
+  const getPartLoad=(period)=>{
+    const src=allData.filter(d=>d.period===period);
+    if(selectedCT) return src.flatMap(d=>(d.ctSheets||{})[selectedCT]||[]);
+    const byPL={};
+    src.flatMap(d=>Object.values(d.ctSheets||{})).flat().forEach(r=>{
+      if(!byPL[r.partLoad]) byPL[r.partLoad]={partLoad:r.partLoad,occurrence:0,effSum:0};
+      byPL[r.partLoad].occurrence+=r.occurrence;
+      byPL[r.partLoad].effSum+=r.eff*r.occurrence;
+    });
+    return Object.values(byPL).sort((a,b)=>a.partLoad-b.partLoad).map(r=>({partLoad:r.partLoad,occurrence:r.occurrence,eff:r.occurrence>0?r.effSum/r.occurrence:0}));
+  };
+  const pl=getPartLoad(thisPer);
+  const plLast=lastPer?getPartLoad(lastPer):[];
+  const titleSuffix=selectedCT?` — ${selectedCT}`:``;
+
+  // legacy fallback kept for backward compat (ct-approach uses weekly ct1Approach)
+  const pl_orig=getData(thisPer,'partloadCT');
+  const plLast_orig=lastPer?getData(lastPer,'partloadCT'):[];
   destroyChart('ct-pl');
   if(pl.length){
     const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
     const ds=[
       {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(245,158,11,.25)',borderRadius:3,yAxisID:'y'},
-      {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:`Current (kW/TR)${titleSuffix}`,data:pl.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
     if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
     charts['ct-pl']=new Chart(document.getElementById('chart-ct-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
