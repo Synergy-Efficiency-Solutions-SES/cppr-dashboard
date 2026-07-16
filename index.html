@@ -1949,9 +1949,14 @@ function renderCurrentPage(){
 // ═══════════════════════════════════════════════════
 // MONTHLY PAGE
 // ═══════════════════════════════════════════════════
-function renderMonthly(){
-  const rows=filteredData.flatMap(d=>d.billing);
-  const metrics=sumMetrics(filteredData);
+// ═══════════════════════════════════════════════════
+// PURE STATS COMPUTATION — shared by the live dashboard
+// AND the exported client view, so both always agree.
+// Does NOT touch the DOM.
+// ═══════════════════════════════════════════════════
+function computeMonthlyStats(dataSubset){
+  const rows=dataSubset.flatMap(d=>d.billing);
+  const metrics=sumMetrics(dataSubset);
   const totalCooling=rows.reduce((s,r)=>s+r.cooling,0);
   const totalPlant=rows.reduce((s,r)=>s+r.totalPlant,0);
   const avgEff=totalCooling>0?totalPlant/totalCooling:0;
@@ -1963,45 +1968,70 @@ function renderMonthly(){
   const coolingPerRoom=metrics.rns>0?totalCooling/metrics.rns:0;
   const energyPerRoom=metrics.rns>0?metrics.totalElec/metrics.rns:0;
 
+  // ASHRAE gauge zone (0.5=excellent, 0.7=good, 0.9=fair, 1.2=need improvement)
+  const eff=avgEff;
+  const ashraeNeedlePct=Math.min(100,Math.max(0,(eff-0.5)/(1.2-0.5)*100));
+  let ashraeZone='',ashraeColor='';
+  if(eff<0.7){ashraeZone='EXCELLENT';ashraeColor='var(--good)'}
+  else if(eff<0.9){ashraeZone='GOOD';ashraeColor='#2d8a4e'}
+  else if(eff<1.1){ashraeZone='FAIR';ashraeColor='var(--warn)'}
+  else{ashraeZone='NEED IMPROVEMENT';ashraeColor='var(--bad)'}
+
+  const chPlantPct=metrics.totalElec>0?(totalPlant/metrics.totalElec*100):0;
+  const otherPct=metrics.totalElec>0?((metrics.totalElec-totalPlant)/metrics.totalElec*100):0;
+
+  const totCh=rows.reduce((s,r)=>s+r.chiller,0);
+  const totCHWP=rows.reduce((s,r)=>s+r.chwp,0);
+  const totCWP=rows.reduce((s,r)=>s+r.cwp,0);
+  const totCT=rows.reduce((s,r)=>s+r.ct,0);
+  const totAux=rows.reduce((s,r)=>s+r.aux,0);
+
+  const allWeekly=dataSubset.slice().sort((a,b)=>a.period.localeCompare(b.period)).flatMap(d=>d.weekly);
+  const sortedBilling=rows.slice().sort((a,b)=>a.dateSerial-b.dateSerial);
+
+  return{
+    rows,metrics,totalCooling,totalPlant,avgEff,
+    elecSavings,co2,trees,coolingPerRoom,energyPerRoom,
+    ashraeNeedlePct,ashraeZone,ashraeColor,
+    chPlantPct,otherPct,totCh,totCHWP,totCWP,totCT,totAux,
+    allWeekly,sortedBilling,
+  };
+}
+
+function renderMonthly(){
+  const s=computeMonthlyStats(filteredData);
+
   document.getElementById('kpi-monthly').innerHTML=`
-    <div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">${fmt4(totalCooling)}</div><div class="kpi-unit">TRh</div></div>
-    <div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">${fmt4(totalPlant)}</div><div class="kpi-unit">kWh</div></div>
-    <div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">${fmt4(elecSavings)}</div><div class="kpi-unit">kWh</div></div>
-    <div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">${fmt4(co2)}</div><div class="kpi-unit">Tons of CO₂e</div></div>
-    <div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">${fmtNum(trees)}</div><div class="kpi-unit">Trees 🌳</div></div>
-    <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmt4(metrics.oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
-    <div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">${fmt4(avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">${fmt4(s.totalCooling)}</div><div class="kpi-unit">TRh</div></div>
+    <div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">${fmt4(s.totalPlant)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">${fmt4(s.elecSavings)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">${fmt4(s.co2)}</div><div class="kpi-unit">Tons of CO₂e</div></div>
+    <div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">${fmtNum(s.trees)}</div><div class="kpi-unit">Trees 🌳</div></div>
+    <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmt4(s.metrics.oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">${fmt4(s.avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
   `;
 
   const hotelEl=document.getElementById('kpi-hotel');
-  if(metrics.rns>0){
+  if(s.metrics.rns>0){
     hotelEl.style.display='grid';
     hotelEl.innerHTML=`
-      <div class="kpi"><div class="kpi-label">Room Nights Sold</div><div class="kpi-value">${fmtNum(metrics.rns)}</div><div class="kpi-unit">RNS / Max ${fmtNum(metrics.maxRns)}</div></div>
-      <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmt4(metrics.totalElec)}</div><div class="kpi-unit">kWh</div></div>
-      <div class="kpi"><div class="kpi-label">Cooling / Room</div><div class="kpi-value">${fmt4(coolingPerRoom)}</div><div class="kpi-unit">TRh/RNS</div></div>
-      <div class="kpi"><div class="kpi-label">Energy / Room</div><div class="kpi-value">${fmt4(energyPerRoom)}</div><div class="kpi-unit">kWh/RNS</div></div>
+      <div class="kpi"><div class="kpi-label">Room Nights Sold</div><div class="kpi-value">${fmtNum(s.metrics.rns)}</div><div class="kpi-unit">RNS / Max ${fmtNum(s.metrics.maxRns)}</div></div>
+      <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmt4(s.metrics.totalElec)}</div><div class="kpi-unit">kWh</div></div>
+      <div class="kpi"><div class="kpi-label">Cooling / Room</div><div class="kpi-value">${fmt4(s.coolingPerRoom)}</div><div class="kpi-unit">TRh/RNS</div></div>
+      <div class="kpi"><div class="kpi-label">Energy / Room</div><div class="kpi-value">${fmt4(s.energyPerRoom)}</div><div class="kpi-unit">kWh/RNS</div></div>
     `;
   } else {
     hotelEl.style.display='none';
     hotelEl.innerHTML='';
   }
 
-  // ASHRAE gauge (0.5=excellent, 0.7=good, 0.9=fair, 1.2=need improvement)
-  const eff=avgEff;
-  const pct=Math.min(100,Math.max(0,(eff-0.5)/(1.2-0.5)*100));
-  document.getElementById('ashrae-needle').style.left=pct+'%';
-  document.getElementById('ashrae-val').textContent=fmtNum(eff,2)+' kW/TR';
-  let zone='',zcolor='';
-  if(eff<0.7){zone='EXCELLENT';zcolor='var(--good)'}
-  else if(eff<0.9){zone='GOOD';zcolor='#2d8a4e'}
-  else if(eff<1.1){zone='FAIR';zcolor='var(--warn)'}
-  else{zone='NEED IMPROVEMENT';zcolor='var(--bad)'}
+  document.getElementById('ashrae-needle').style.left=s.ashraeNeedlePct+'%';
+  document.getElementById('ashrae-val').textContent=fmtNum(s.avgEff,2)+' kW/TR';
   const zEl=document.getElementById('ashrae-zone');
-  zEl.textContent=zone;zEl.style.color=zcolor;
+  zEl.textContent=s.ashraeZone;zEl.style.color=s.ashraeColor;
 
   // Weekly chart
-  const allWeekly=filteredData.slice().sort((a,b)=>a.period.localeCompare(b.period)).flatMap(d=>d.weekly);
+  const allWeekly=s.allWeekly;
   destroyChart('weekly');
   if(allWeekly.length>0){
     const ctx=document.getElementById('chart-weekly').getContext('2d');
@@ -2020,29 +2050,22 @@ function renderMonthly(){
   }
 
   // Energy share pies
-  const chPlantPct=metrics.totalElec>0?(totalPlant/metrics.totalElec*100):0;
-  const otherPct=metrics.totalElec>0?((metrics.totalElec-totalPlant)/metrics.totalElec*100):0;
   destroyChart('energy-share');
   charts['energy-share']=new Chart(document.getElementById('chart-energy-share').getContext('2d'),{
     type:'doughnut',
-    data:{labels:['Chiller Plant','Other'],datasets:[{data:[+chPlantPct.toFixed(2),+otherPct.toFixed(2)],backgroundColor:['#0a3d7c','#cbd5e1'],borderWidth:0}]},
+    data:{labels:['Chiller Plant','Other'],datasets:[{data:[+s.chPlantPct.toFixed(2),+s.otherPct.toFixed(2)],backgroundColor:['#0a3d7c','#cbd5e1'],borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{color:'#4a5568',font:{size:12},padding:14,boxWidth:14}},tooltip:{callbacks:{label:c=>c.label+': '+c.raw+'%'}}}}
   });
 
   destroyChart('plant-share');
-  const totCh=rows.reduce((s,r)=>s+r.chiller,0);
-  const totCHWP=rows.reduce((s,r)=>s+r.chwp,0);
-  const totCWP=rows.reduce((s,r)=>s+r.cwp,0);
-  const totCT=rows.reduce((s,r)=>s+r.ct,0);
-  const totAux=rows.reduce((s,r)=>s+r.aux,0);
   charts['plant-share']=new Chart(document.getElementById('chart-plant-share').getContext('2d'),{
     type:'doughnut',
-    data:{labels:['Chiller','CHWP','CWP','CT','Aux'],datasets:[{data:[totCh,totCHWP,totCWP,totCT,totAux].map(v=>+v.toFixed(0)),backgroundColor:['#0a3d7c','#1a5fa3','#2d8a4e','#3cb87a','#d97706'],borderWidth:0}]},
+    data:{labels:['Chiller','CHWP','CWP','CT','Aux'],datasets:[{data:[s.totCh,s.totCHWP,s.totCWP,s.totCT,s.totAux].map(v=>+v.toFixed(0)),backgroundColor:['#0a3d7c','#1a5fa3','#2d8a4e','#3cb87a','#d97706'],borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{color:'#4a5568',font:{size:12},padding:14,boxWidth:14}},tooltip:{callbacks:{label:c=>c.label+': '+fmtNum(c.raw)+' kWh'}}}}
   });
 
   // Daily load chart
-  const sorted=rows.slice().sort((a,b)=>a.dateSerial-b.dateSerial);
+  const sorted=s.sortedBilling;
   destroyChart('load');
   charts['load']=new Chart(document.getElementById('chart-load').getContext('2d'),{
     type:'bar',
@@ -2060,10 +2083,10 @@ function renderMonthly(){
 // ═══════════════════════════════════════════════════
 // YEARLY PAGE
 // ═══════════════════════════════════════════════════
-function renderYearly(){
-  // Group by period — use filteredData to respect filters
+function computeYearlyStats(dataSubset){
+  // Group by period — respects whatever filter the caller already applied
   const byPeriod={};
-  for(const d of filteredData){
+  for(const d of dataSubset){
     if(!byPeriod[d.period])byPeriod[d.period]={period:d.period,billing:[],metrics:{}};
     byPeriod[d.period].billing.push(...d.billing);
     const m=d.metrics;
@@ -2086,17 +2109,27 @@ function renderYearly(){
   const avgSavingsPct=oldEff>0?Math.round((1-avgEff/oldEff)*100):0;
   const totElecSavings=Math.max(0,(oldEff-avgEff)*totCooling);
   const co2=totElecSavings*(periods[0]?.metrics.emissionFactor||0.84)/1000;
+  const hasRns=periods.some(p=>p.metrics.rns>0);
+  const labels=periods.map(p=>periodLabel(p.period)||p.period);
+
+  return{
+    periods,labels,totCooling,totPlant,totRns,totElec,
+    avgEff,oldEff,avgSavingsPct,totElecSavings,co2,hasRns,
+  };
+}
+
+function renderYearly(){
+  const s=computeYearlyStats(filteredData);
+  const{periods,labels}=s;
 
   document.getElementById('kpi-yearly').innerHTML=`
-    <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmt4(oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
-    <div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">${fmt4(avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
-    <div class="kpi"><div class="kpi-label">Avg Saving</div><div class="kpi-value green">${avgSavingsPct} %</div><div class="kpi-unit">vs old system</div></div>
-    <div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">${fmt4(totCooling)}</div><div class="kpi-unit">TRh</div></div>
-    <div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">${fmt4(totElecSavings)}</div><div class="kpi-unit">kWh</div></div>
-    <div class="kpi"><div class="kpi-label">Total Carbon Savings</div><div class="kpi-value green">${fmt4(co2)}</div><div class="kpi-unit">Tons CO₂e</div></div>
+    <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmt4(s.oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">${fmt4(s.avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Saving</div><div class="kpi-value green">${s.avgSavingsPct} %</div><div class="kpi-unit">vs old system</div></div>
+    <div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">${fmt4(s.totCooling)}</div><div class="kpi-unit">TRh</div></div>
+    <div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">${fmt4(s.totElecSavings)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Total Carbon Savings</div><div class="kpi-value green">${fmt4(s.co2)}</div><div class="kpi-unit">Tons CO₂e</div></div>
   `;
-
-  const labels=periods.map(p=>periodLabel(p.period)||p.period);
 
   // RNS + Electricity
   destroyChart('yearly-rns');
@@ -2129,10 +2162,9 @@ function renderYearly(){
 
   // Per room
   destroyChart('yearly-room');
-  const hasRns=periods.some(p=>p.metrics.rns>0);
   const roomCardEl=document.getElementById('chart-yearly-room')?.closest('.card');
-  if(roomCardEl) roomCardEl.style.display=hasRns?'block':'none';
-  if(hasRns){
+  if(roomCardEl) roomCardEl.style.display=s.hasRns?'block':'none';
+  if(s.hasRns){
     charts['yearly-room']=new Chart(document.getElementById('chart-yearly-room').getContext('2d'),{
       type:'line',
       data:{
@@ -4486,11 +4518,12 @@ function filterDashboard(){
   else if(active&&active.id==='page-yearly') renderYearly();
 }
 
-// ── Monthly — mirrors the main dashboard's renderMonthly() exactly ──
-function renderMonthly(){
-  const rows=filteredData.flatMap(d=>d.billing);
-  if(!rows.length)return;
-  const metrics=sumMetrics(filteredData);
+// ── Shared pure computation — IDENTICAL copy of computeMonthlyStats()
+// from the main dashboard. Kept as the single source of truth for these
+// formulas: change it in the main file, re-export, and both stay in sync. ──
+function computeMonthlyStats(dataSubset){
+  const rows=dataSubset.flatMap(d=>d.billing);
+  const metrics=sumMetrics(dataSubset);
   const totalCooling=rows.reduce((s,r)=>s+r.cooling,0);
   const totalPlant=rows.reduce((s,r)=>s+r.totalPlant,0);
   const avgEff=totalCooling>0?totalPlant/totalCooling:0;
@@ -4501,43 +4534,68 @@ function renderMonthly(){
   const coolingPerRoom=metrics.rns>0?totalCooling/metrics.rns:0;
   const energyPerRoom=metrics.rns>0?metrics.totalElec/metrics.rns:0;
 
+  const eff=avgEff;
+  const ashraeNeedlePct=Math.min(100,Math.max(0,(eff-0.5)/(1.2-0.5)*100));
+  let ashraeZone='',ashraeColor='';
+  if(eff<0.7){ashraeZone='EXCELLENT';ashraeColor='#1a6b3a'}
+  else if(eff<0.9){ashraeZone='GOOD';ashraeColor='#2d8a4e'}
+  else if(eff<1.1){ashraeZone='FAIR';ashraeColor='#d97706'}
+  else{ashraeZone='NEED IMPROVEMENT';ashraeColor='#dc2626'}
+
+  const chPlantPct=metrics.totalElec>0?(totalPlant/metrics.totalElec*100):0;
+  const otherPct=metrics.totalElec>0?((metrics.totalElec-totalPlant)/metrics.totalElec*100):0;
+  const totCh=rows.reduce((s,r)=>s+r.chiller,0);
+  const totCHWP=rows.reduce((s,r)=>s+r.chwp,0);
+  const totCWP=rows.reduce((s,r)=>s+r.cwp,0);
+  const totCT=rows.reduce((s,r)=>s+r.ct,0);
+  const totAux=rows.reduce((s,r)=>s+r.aux,0);
+
+  const allWeekly=dataSubset.slice().sort((a,b)=>a.period.localeCompare(b.period)).flatMap(d=>d.weekly);
+  const sortedBilling=rows.slice().sort((a,b)=>a.dateSerial-b.dateSerial);
+
+  return{
+    rows,metrics,totalCooling,totalPlant,avgEff,
+    elecSavings,co2,trees,coolingPerRoom,energyPerRoom,
+    ashraeNeedlePct,ashraeZone,ashraeColor,
+    chPlantPct,otherPct,totCh,totCHWP,totCWP,totCT,totAux,
+    allWeekly,sortedBilling,
+  };
+}
+
+// ── Monthly — now just renders what computeMonthlyStats() returns ──
+function renderMonthly(){
+  if(!filteredData.flatMap(d=>d.billing).length)return;
+  const s=computeMonthlyStats(filteredData);
+
   document.getElementById('kpi-monthly').innerHTML=
-    '<div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">'+fmt4(totalCooling)+'</div><div class="kpi-unit">TRh</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">'+fmt4(totalPlant)+'</div><div class="kpi-unit">kWh</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">'+fmt4(elecSavings)+'</div><div class="kpi-unit">kWh</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">'+fmt4(co2)+'</div><div class="kpi-unit">Tons of CO₂e</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">'+fmtNum(trees)+'</div><div class="kpi-unit">Trees 🌳</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmt4(metrics.oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">'+fmt4(avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>';
+    '<div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">'+fmt4(s.totalCooling)+'</div><div class="kpi-unit">TRh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">'+fmt4(s.totalPlant)+'</div><div class="kpi-unit">kWh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">'+fmt4(s.elecSavings)+'</div><div class="kpi-unit">kWh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">'+fmt4(s.co2)+'</div><div class="kpi-unit">Tons of CO₂e</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">'+fmtNum(s.trees)+'</div><div class="kpi-unit">Trees 🌳</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmt4(s.metrics.oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">'+fmt4(s.avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>';
 
   const hotelEl=document.getElementById('kpi-hotel');
-  if(metrics.rns>0){
+  if(s.metrics.rns>0){
     hotelEl.style.display='grid';
     hotelEl.innerHTML=
-      '<div class="kpi"><div class="kpi-label">Room Nights Sold</div><div class="kpi-value">'+fmtNum(metrics.rns)+'</div><div class="kpi-unit">RNS / Max '+fmtNum(metrics.maxRns)+'</div></div>'+
-      '<div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">'+fmt4(metrics.totalElec)+'</div><div class="kpi-unit">kWh</div></div>'+
-      '<div class="kpi"><div class="kpi-label">Cooling / Room</div><div class="kpi-value">'+fmt4(coolingPerRoom)+'</div><div class="kpi-unit">TRh/RNS</div></div>'+
-      '<div class="kpi"><div class="kpi-label">Energy / Room</div><div class="kpi-value">'+fmt4(energyPerRoom)+'</div><div class="kpi-unit">kWh/RNS</div></div>';
+      '<div class="kpi"><div class="kpi-label">Room Nights Sold</div><div class="kpi-value">'+fmtNum(s.metrics.rns)+'</div><div class="kpi-unit">RNS / Max '+fmtNum(s.metrics.maxRns)+'</div></div>'+
+      '<div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">'+fmt4(s.metrics.totalElec)+'</div><div class="kpi-unit">kWh</div></div>'+
+      '<div class="kpi"><div class="kpi-label">Cooling / Room</div><div class="kpi-value">'+fmt4(s.coolingPerRoom)+'</div><div class="kpi-unit">TRh/RNS</div></div>'+
+      '<div class="kpi"><div class="kpi-label">Energy / Room</div><div class="kpi-value">'+fmt4(s.energyPerRoom)+'</div><div class="kpi-unit">kWh/RNS</div></div>';
   } else {
     hotelEl.style.display='none';
     hotelEl.innerHTML='';
   }
 
-  // ASHRAE gauge — identical logic to the main dashboard
-  const eff=avgEff;
-  const pct=Math.min(100,Math.max(0,(eff-0.5)/(1.2-0.5)*100));
-  document.getElementById('ashrae-needle').style.left=pct+'%';
-  document.getElementById('ashrae-val').textContent=fmtNum(eff,2)+' kW/TR';
-  let zone='',zcolor='';
-  if(eff<0.7){zone='EXCELLENT';zcolor='#1a6b3a'}
-  else if(eff<0.9){zone='GOOD';zcolor='#2d8a4e'}
-  else if(eff<1.1){zone='FAIR';zcolor='#d97706'}
-  else{zone='NEED IMPROVEMENT';zcolor='#dc2626'}
+  document.getElementById('ashrae-needle').style.left=s.ashraeNeedlePct+'%';
+  document.getElementById('ashrae-val').textContent=fmtNum(s.avgEff,2)+' kW/TR';
   const zEl=document.getElementById('ashrae-zone');
-  zEl.textContent=zone;zEl.style.color=zcolor;
+  zEl.textContent=s.ashraeZone;zEl.style.color=s.ashraeColor;
 
   // Weekly chart
-  const allWeekly=filteredData.slice().sort((a,b)=>a.period.localeCompare(b.period)).flatMap(d=>d.weekly);
+  const allWeekly=s.allWeekly;
   destroyChart('weekly');
   if(allWeekly.length){
     charts['weekly']=new Chart(document.getElementById('chart-weekly').getContext('2d'),{
@@ -4550,27 +4608,20 @@ function renderMonthly(){
   }
 
   // Energy share pies
-  const chPlantPct=metrics.totalElec>0?(totalPlant/metrics.totalElec*100):0;
-  const otherPct=metrics.totalElec>0?((metrics.totalElec-totalPlant)/metrics.totalElec*100):0;
   destroyChart('energy-share');
   charts['energy-share']=new Chart(document.getElementById('chart-energy-share').getContext('2d'),{
-    type:'doughnut',data:{labels:['Chiller Plant','Other'],datasets:[{data:[+chPlantPct.toFixed(2),+otherPct.toFixed(2)],backgroundColor:['#0a3d7c','#cbd5e1'],borderWidth:0}]},
+    type:'doughnut',data:{labels:['Chiller Plant','Other'],datasets:[{data:[+s.chPlantPct.toFixed(2),+s.otherPct.toFixed(2)],backgroundColor:['#0a3d7c','#cbd5e1'],borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{color:'#4a5568',font:{size:12},padding:14,boxWidth:14}},tooltip:{callbacks:{label:c=>c.label+': '+c.raw+'%'}}}}
   });
 
   destroyChart('plant-share');
-  const totCh=rows.reduce((s,r)=>s+r.chiller,0);
-  const totCHWP=rows.reduce((s,r)=>s+r.chwp,0);
-  const totCWP=rows.reduce((s,r)=>s+r.cwp,0);
-  const totCT=rows.reduce((s,r)=>s+r.ct,0);
-  const totAux=rows.reduce((s,r)=>s+r.aux,0);
   charts['plant-share']=new Chart(document.getElementById('chart-plant-share').getContext('2d'),{
-    type:'doughnut',data:{labels:['Chiller','CHWP','CWP','CT','Aux'],datasets:[{data:[totCh,totCHWP,totCWP,totCT,totAux].map(v=>+v.toFixed(0)),backgroundColor:['#0a3d7c','#1a5fa3','#2d8a4e','#3cb87a','#d97706'],borderWidth:0}]},
+    type:'doughnut',data:{labels:['Chiller','CHWP','CWP','CT','Aux'],datasets:[{data:[s.totCh,s.totCHWP,s.totCWP,s.totCT,s.totAux].map(v=>+v.toFixed(0)),backgroundColor:['#0a3d7c','#1a5fa3','#2d8a4e','#3cb87a','#d97706'],borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{color:'#4a5568',font:{size:12},padding:14,boxWidth:14}},tooltip:{callbacks:{label:c=>c.label+': '+fmtNum(c.raw)+' kWh'}}}}
   });
 
   // Daily load chart
-  const sorted=rows.slice().sort((a,b)=>a.dateSerial-b.dateSerial);
+  const sorted=s.sortedBilling;
   destroyChart('load');
   charts['load']=new Chart(document.getElementById('chart-load').getContext('2d'),{
     type:'bar',data:{labels:sorted.map(r=>fmtShort(r.dateSerial)),datasets:[
@@ -4580,10 +4631,11 @@ function renderMonthly(){
   });
 }
 
-// ── Yearly — mirrors the main dashboard's renderYearly() exactly ──
-function renderYearly(){
+// ── Shared pure computation — IDENTICAL copy of computeYearlyStats()
+// from the main dashboard. Single source of truth for these formulas. ──
+function computeYearlyStats(dataSubset){
   const byPeriod={};
-  for(const d of filteredData){
+  for(const d of dataSubset){
     if(!byPeriod[d.period])byPeriod[d.period]={period:d.period,billing:[],metrics:{}};
     byPeriod[d.period].billing.push(...d.billing);
     const m=d.metrics;
@@ -4592,7 +4644,6 @@ function renderYearly(){
     bm.oldEff=m.oldEff||bm.oldEff;bm.emissionFactor=m.emissionFactor||bm.emissionFactor;
   }
   const periods=Object.values(byPeriod).filter(p=>p.period&&p.period!=='—').sort((a,b)=>a.period.localeCompare(b.period));
-  if(!periods.length)return;
 
   const totCooling=periods.flatMap(p=>p.billing).reduce((s,r)=>s+r.cooling,0);
   const _allB=periods.flatMap(p=>p.billing);
@@ -4603,16 +4654,25 @@ function renderYearly(){
   const avgSavingsPct=oldEff>0?Math.round((1-avgEff/oldEff)*100):0;
   const totElecSavings=Math.max(0,(oldEff-avgEff)*totCooling);
   const co2=totElecSavings*(periods[0]?.metrics.emissionFactor||0.84)/1000;
+  const hasRns=periods.some(p=>p.metrics.rns>0);
+  const labels=periods.map(p=>periodLabel(p.period)||p.period);
+
+  return{periods,labels,totCooling,avgEff,oldEff,avgSavingsPct,totElecSavings,co2,hasRns};
+}
+
+// ── Yearly — now just renders what computeYearlyStats() returns ──
+function renderYearly(){
+  const s=computeYearlyStats(filteredData);
+  const{periods,labels}=s;
+  if(!periods.length)return;
 
   document.getElementById('kpi-yearly').innerHTML=
-    '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmt4(oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">'+fmt4(avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Avg Saving</div><div class="kpi-value green">'+avgSavingsPct+' %</div><div class="kpi-unit">vs old system</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">'+fmt4(totCooling)+'</div><div class="kpi-unit">TRh</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">'+fmt4(totElecSavings)+'</div><div class="kpi-unit">kWh</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Total Carbon Savings</div><div class="kpi-value green">'+fmt4(co2)+'</div><div class="kpi-unit">Tons CO₂e</div></div>';
-
-  const labels=periods.map(p=>periodLabel(p.period)||p.period);
+    '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmt4(s.oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">'+fmt4(s.avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Avg Saving</div><div class="kpi-value green">'+s.avgSavingsPct+' %</div><div class="kpi-unit">vs old system</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">'+fmt4(s.totCooling)+'</div><div class="kpi-unit">TRh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">'+fmt4(s.totElecSavings)+'</div><div class="kpi-unit">kWh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Total Carbon Savings</div><div class="kpi-value green">'+fmt4(s.co2)+'</div><div class="kpi-unit">Tons CO₂e</div></div>';
 
   destroyChart('yearly-rns');
   charts['yearly-rns']=new Chart(document.getElementById('chart-yearly-rns').getContext('2d'),{
@@ -4632,10 +4692,9 @@ function renderYearly(){
   });
 
   destroyChart('yearly-room');
-  const hasRns=periods.some(p=>p.metrics.rns>0);
   const roomCardEl=document.getElementById('card-yearly-room');
-  if(roomCardEl) roomCardEl.style.display=hasRns?'block':'none';
-  if(hasRns){
+  if(roomCardEl) roomCardEl.style.display=s.hasRns?'block':'none';
+  if(s.hasRns){
     charts['yearly-room']=new Chart(document.getElementById('chart-yearly-room').getContext('2d'),{
       type:'line',data:{labels,datasets:[
         {label:'Cooling/Room (TRh/RNS)',data:periods.map(p=>p.metrics.rns>0?+(p.billing.reduce((s,r)=>s+r.cooling,0)/p.metrics.rns).toFixed(2):0),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
