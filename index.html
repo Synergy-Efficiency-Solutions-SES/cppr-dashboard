@@ -1033,10 +1033,23 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
 
     <!-- Footer -->
     <div style="background:var(--ses-dark);padding:24px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-      <div style="color:rgba(255,255,255,.5);font-size:11px">CPPR Dashboard · Created June 2026 · Synergy Efficiency Solutions</div>
+      <div style="color:rgba(255,255,255,.5);font-size:11px">
+        CPPR Dashboard · Synergy Efficiency Solutions
+        <span style="color:rgba(255,255,255,.3);margin:0 8px">|</span>
+        <span title="Bump TOOL_VERSION/TOOL_BUILD_DATE in the script whenever you edit this file, so you can tell at a glance which version is deployed on GitHub Pages.">Build <span id="tool-version"></span> · <span id="tool-build-date"></span></span>
+      </div>
       <a href="https://synergy.id" target="_blank" style="color:var(--ses-light);font-size:11px;text-decoration:none;font-weight:600">synergy.id →</a>
     </div>
   </div>
+  <script>
+    // Bump these two whenever you (or I) edit this file, so the footer always tells you
+    // at a glance whether the page you're looking at (locally or on GitHub Pages) is the
+    // latest version — no more guessing whether a cached/old copy is being served.
+    const TOOL_VERSION='v1.6.0';
+    const TOOL_BUILD_DATE='2026-07-17';
+    document.getElementById('tool-version').textContent=TOOL_VERSION;
+    document.getElementById('tool-build-date').textContent=TOOL_BUILD_DATE;
+  </script>
 
   <!-- PAGE: MONTHLY OVERVIEW -->
   <div class="page" id="page-monthly">
