@@ -1037,19 +1037,26 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <div style="color:rgba(255,255,255,.5);font-size:11px">
         CPPR Dashboard · Synergy Efficiency Solutions
         <span style="color:rgba(255,255,255,.3);margin:0 8px">|</span>
-        <span title="Bump TOOL_VERSION/TOOL_BUILD_DATE in the script whenever you edit this file, so you can tell at a glance which version is deployed on GitHub Pages.">Build <span id="tool-version"></span> · <span id="tool-build-date"></span></span>
+        <span title="Read automatically from the file's last-modified date reported by the browser/host — nothing to update manually.">Last modified: <span id="tool-build-date">—</span></span>
       </div>
       <a href="https://synergy.id" target="_blank" style="color:var(--ses-light);font-size:11px;text-decoration:none;font-weight:600">synergy.id →</a>
     </div>
   </div>
   <script>
-    // Bump these two whenever you (or I) edit this file, so the footer always tells you
-    // at a glance whether the page you're looking at (locally or on GitHub Pages) is the
-    // latest version — no more guessing whether a cached/old copy is being served.
-    const TOOL_VERSION='v1.6.1';
-    const TOOL_BUILD_DATE='2026-07-17';
-    document.getElementById('tool-version').textContent=TOOL_VERSION;
-    document.getElementById('tool-build-date').textContent=TOOL_BUILD_DATE;
+    // Automatic — no manual version number to remember to bump. document.lastModified is
+    // set by the browser from the file/server's last-modified date, so this always reflects
+    // whatever copy of the page is actually being viewed (local file, cached copy, or the
+    // live GitHub Pages deployment) without anyone having to touch this code.
+    // ⚠️ Known limitation: GitHub Pages' CDN doesn't always report a precise Last-Modified
+    // header, so this can sometimes show the wrong date/time online (it tends to be reliable
+    // when opening the file locally, less so once served through GitHub's CDN). If the date
+    // shown looks off, that's this limitation — not a bug in the dashboard itself.
+    try{
+      const lm=new Date(document.lastModified);
+      document.getElementById('tool-build-date').textContent=isNaN(lm)?'unknown':lm.toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'});
+    }catch(e){
+      document.getElementById('tool-build-date').textContent='unknown';
+    }
   </script>
 
   <!-- PAGE: MONTHLY OVERVIEW -->
