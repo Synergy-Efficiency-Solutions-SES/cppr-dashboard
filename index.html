@@ -1478,6 +1478,22 @@ const clientColorMap = {};
 let colorIdx = 0;
 function clientColor(n){if(!clientColorMap[n])clientColorMap[n]=CLIENT_COLORS[colorIdx++%CLIENT_COLORS.length];return clientColorMap[n]}
 
+// Stable, non-guessable-enough token per client, computed the same way every time (same
+// result on any computer/browser for your team). Not bulletproof — anyone who reads this
+// tool's source AND knows the client's exact name could recompute it — but the actual goal
+// here is just to stop random internet visitors / search engines from stumbling on a client's
+// report, not to defend against a determined team member (who has legitimate access anyway).
+const EXPORT_URL_SALT='ses-cppr-2026-change-me-if-needed'; // change = every existing client link breaks
+function clientExportToken(clientName){
+  const str=EXPORT_URL_SALT+'::'+clientName.toLowerCase().trim();
+  let h=2166136261; // FNV-1a hash — simple, synchronous, deterministic
+  for(let i=0;i<str.length;i++){
+    h^=str.charCodeAt(i);
+    h=Math.imul(h,16777619);
+  }
+  return (h>>>0).toString(16).padStart(8,'0');
+}
+
 // ═══════════════════════════════════════════════════
 // PAGE NAVIGATION
 // ═══════════════════════════════════════════════════
@@ -3607,22 +3623,8 @@ function exportClientView(){
 
   const clientName=[...new Set(allData.map(d=>d.client))].filter(Boolean).join(', ') || 'Client';
   const baseName=clientName.toLowerCase().replace(/[^a-z0-9]/g,'-');
-  // Stable, non-guessable token derived from the client name — SAME every month for the
-  // same client, so the link you send them once keeps working when you push updates.
-  // The SALT lives only in this local tool file (never pushed to the public repo), so
-  // outsiders can't recompute the token just by knowing the client's name.
-  // ⚠️ Change SALT only if you're OK with every existing client link breaking.
-  const EXPORT_URL_SALT='ses-cppr-2026-change-me-if-needed';
-  function stableClientToken(name){
-    const str=EXPORT_URL_SALT+'::'+name.toLowerCase().trim();
-    let h=2166136261; // FNV-1a hash — simple, synchronous, deterministic
-    for(let i=0;i<str.length;i++){
-      h^=str.charCodeAt(i);
-      h=Math.imul(h,16777619);
-    }
-    return (h>>>0).toString(16).padStart(8,'0');
-  }
-  const safeName=baseName+'-'+stableClientToken(clientName);
+  // Same token every time for the same client — see clientExportToken() above.
+  const safeName=baseName+'-'+clientExportToken(clientName);
   const periods=[...new Set(allData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
   const lastPeriod=periods[periods.length-1]||'';
   const lastLabel=periodLabel(lastPeriod)||lastPeriod;
