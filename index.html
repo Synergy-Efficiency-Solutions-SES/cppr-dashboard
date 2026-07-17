@@ -3606,7 +3606,23 @@ function exportClientView(){
   if(!allData.length){ alert('No data loaded.'); return; }
 
   const clientName=[...new Set(allData.map(d=>d.client))].filter(Boolean).join(', ') || 'Client';
-  const safeName=clientName.toLowerCase().replace(/[^a-z0-9]/g,'-');
+  const baseName=clientName.toLowerCase().replace(/[^a-z0-9]/g,'-');
+  // Stable, non-guessable token derived from the client name — SAME every month for the
+  // same client, so the link you send them once keeps working when you push updates.
+  // The SALT lives only in this local tool file (never pushed to the public repo), so
+  // outsiders can't recompute the token just by knowing the client's name.
+  // ⚠️ Change SALT only if you're OK with every existing client link breaking.
+  const EXPORT_URL_SALT='ses-cppr-2026-change-me-if-needed';
+  function stableClientToken(name){
+    const str=EXPORT_URL_SALT+'::'+name.toLowerCase().trim();
+    let h=2166136261; // FNV-1a hash — simple, synchronous, deterministic
+    for(let i=0;i<str.length;i++){
+      h^=str.charCodeAt(i);
+      h=Math.imul(h,16777619);
+    }
+    return (h>>>0).toString(16).padStart(8,'0');
+  }
+  const safeName=baseName+'-'+stableClientToken(clientName);
   const periods=[...new Set(allData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
   const lastPeriod=periods[periods.length-1]||'';
   const lastLabel=periodLabel(lastPeriod)||lastPeriod;
@@ -3622,6 +3638,9 @@ function exportClientView(){
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Keep this report out of search engines: the repo/Pages site is public,
+     so this page should only be reachable via the direct link shared with the client. -->
+<meta name="robots" content="noindex, nofollow">
 <title>CPPR — ${clientName}</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>
 <style>
