@@ -28,11 +28,20 @@ and charts are drawn with [Chart.js](https://www.chartjs.org/), both loaded from
    looks right.
 4. Click **"⬇ Export Client View"**. This downloads a single self-contained `.html` file
    named `<client>-<token>.html` (see §3 for what the token is and why it's stable).
-5. Upload that downloaded file to this GitHub repo (same filename — don't rename it), replacing
-   the previous month's version for that client.
-6. Push / commit. Wait ~1-2 minutes for GitHub Pages to redeploy.
-7. The client's link (same URL every month — see §3) now shows the updated data. You don't
-   need to re-send them anything.
+5. Upload that downloaded file to this GitHub repo, **using the exact same filename as last
+   month** (don't rename it — the whole point is that the URL stays the same). Two ways to do
+   this on GitHub's website:
+   - **Fastest**: open the repo → click on the existing client file (e.g. `mustika-57871761.html`)
+     → click the pencil/edit icon → this opens GitHub's editor. Delete all the content and
+     paste in the new file's content, OR use "Upload files" (see below) which is usually
+     easier for a full file replace.
+   - **Recommended**: from the repo's main page, click **"Add file" → "Upload files"** (or the
+     "+" button next to "Go to file", as shown in the repo toolbar). Drag the newly downloaded
+     file into the upload area. Since it has the exact same filename as the file already in the
+     repo, GitHub will detect it as replacing/updating that file — you'll see it listed as a
+     change to the existing file, not a new one. Scroll down and click **"Commit changes"**.
+6. Wait ~1-2 minutes for GitHub Pages to redeploy, then the client's link (same URL as always
+   — see §3) shows the updated data. You don't need to re-send them anything.
 
 **First time exporting a given client**: note down the resulting URL somewhere (a spreadsheet,
 a notes file — anything outside this repo) so you don't have to re-derive it later. It will
