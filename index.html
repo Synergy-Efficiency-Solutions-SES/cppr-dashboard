@@ -866,6 +866,13 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
   <div class="filters-bar">
     <span id="client-badge" style="font-size:12px;font-weight:700;color:var(--ses-blue);background:rgba(10,61,124,.08);padding:5px 12px;border-radius:6px;display:none">👤 <span id="client-name"></span></span>
     <span class="filters-label">Filters:</span>
+    <select id="sel-facility-type" onchange="onFacilityTypeChange()" title="Changes how the occupancy-style KPI is labeled (Room Nights Sold, Ton Production, etc.) — pick the type matching whichever client's data you just loaded.">
+      <option value="hotel">🏨 Hotel</option>
+      <option value="hospital">🏥 Hospital</option>
+      <option value="mall">🏬 Mall</option>
+      <option value="office">🏢 Office</option>
+      <option value="factory">🏭 Factory</option>
+    </select>
     <select id="sel-year" onchange="onYearChange()"><option value="">All Years</option></select>
     <div id="month-pills" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center"></div>
     <span id="filter-info" style="font-size:11px;color:var(--muted);margin-left:auto"></span>
@@ -1134,7 +1141,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <div class="card-body"><div class="chart-h220"><canvas id="chart-yearly-load"></canvas></div></div>
     </div>
     <div class="card" style="margin-bottom:16px">
-      <div class="card-head"><div class="card-title">Cooling per Room & Energy per Room — per Month</div></div>
+      <div class="card-head"><div class="card-title" id="yearly-room-title">Cooling per Room & Energy per Room — per Month</div></div>
       <div class="card-body"><div class="chart-h180"><canvas id="chart-yearly-room"></canvas></div></div>
     </div>
     <div class="card">
@@ -1493,8 +1500,21 @@ let allData = [];
 let filteredData = [];
 let charts = {};
 let currentPage = 'home';
+let selectedFacilityType = 'hotel';
 const pendingFiles = [];
 const CLIENT_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
+// Occupancy-style metric relabeling per site type — mirrors the Power BI bookmark system
+// (Hotel Monthly/Yearly, Factory Monthly/Yearly, etc.). The underlying numbers always come
+// from the same two Excel columns (Site Metrics: RNS, Max RNS) — nothing changes about how
+// data is parsed or computed. Only the labels/units shown change based on this selection,
+// which you set manually per client (there is no "facility type" field in the Excel template).
+const FACILITY_TYPES = {
+  hotel:    { name:'Hotel',    metricLabel:'Room Nights Sold', metricAbbr:'RNS',       maxLabel:'Max RNS' },
+  hospital: { name:'Hospital', metricLabel:'Patient Days',     metricAbbr:'Patient-Days', maxLabel:'Max Patient-Days' },
+  mall:     { name:'Mall',     metricLabel:'Visitor Count',    metricAbbr:'Visitors',  maxLabel:'Max Visitors' },
+  office:   { name:'Office',   metricLabel:'Employee Count',   metricAbbr:'Employees', maxLabel:'Max Employees' },
+  factory:  { name:'Factory',  metricLabel:'Ton Production',   metricAbbr:'Tons',      maxLabel:'Max Production' },
+};
 const clientColorMap = {};
 let colorIdx = 0;
 function clientColor(n){if(!clientColorMap[n])clientColorMap[n]=CLIENT_COLORS[colorIdx++%CLIENT_COLORS.length];return clientColorMap[n]}
@@ -1947,6 +1967,12 @@ function getSelectedMonths(){
   return[...container.querySelectorAll('input.mp-month:checked')].map(cb=>cb.value);
 }
 
+function onFacilityTypeChange(){
+  selectedFacilityType=document.getElementById('sel-facility-type').value;
+  updateTrendMetricLabels();
+  renderCurrentPage();
+}
+
 function onYearChange(){
   const year=document.getElementById('sel-year').value;
   const periods=[...new Set(allData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
@@ -2049,13 +2075,14 @@ function renderMonthly(){
   `;
 
   const hotelEl=document.getElementById('kpi-hotel');
+  const ft=FACILITY_TYPES[selectedFacilityType]||FACILITY_TYPES.hotel;
   if(s.metrics.rns>0){
-    hotelEl.style.display='grid';
+    hotelEl.style.display='flex';
     hotelEl.innerHTML=`
-      <div class="kpi"><div class="kpi-label">Room Nights Sold</div><div class="kpi-value">${fmtNum(s.metrics.rns)}</div><div class="kpi-unit">RNS / Max ${fmtNum(s.metrics.maxRns)}</div></div>
+      <div class="kpi"><div class="kpi-label">${ft.metricLabel}</div><div class="kpi-value">${fmtNum(s.metrics.rns)}</div><div class="kpi-unit">${ft.metricAbbr} / ${ft.maxLabel} ${fmtNum(s.metrics.maxRns)}</div></div>
       <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmt4(s.metrics.totalElec)}</div><div class="kpi-unit">kWh</div></div>
-      <div class="kpi"><div class="kpi-label">Cooling / Room</div><div class="kpi-value">${fmt4(s.coolingPerRoom)}</div><div class="kpi-unit">TRh/RNS</div></div>
-      <div class="kpi"><div class="kpi-label">Energy / Room</div><div class="kpi-value">${fmt4(s.energyPerRoom)}</div><div class="kpi-unit">kWh/RNS</div></div>
+      <div class="kpi"><div class="kpi-label">Cooling / ${ft.metricAbbr}</div><div class="kpi-value">${fmt4(s.coolingPerRoom)}</div><div class="kpi-unit">TRh/${ft.metricAbbr}</div></div>
+      <div class="kpi"><div class="kpi-label">Energy / ${ft.metricAbbr}</div><div class="kpi-value">${fmt4(s.energyPerRoom)}</div><div class="kpi-unit">kWh/${ft.metricAbbr}</div></div>
     `;
   } else {
     hotelEl.style.display='none';
@@ -2202,16 +2229,19 @@ function renderYearly(){
   const roomCardEl=document.getElementById('chart-yearly-room')?.closest('.card');
   if(roomCardEl) roomCardEl.style.display=s.hasRns?'block':'none';
   if(s.hasRns){
+    const ftY=FACILITY_TYPES[selectedFacilityType]||FACILITY_TYPES.hotel;
+    const titleElY=document.getElementById('yearly-room-title');
+    if(titleElY) titleElY.textContent=`Cooling per ${ftY.metricAbbr} & Energy per ${ftY.metricAbbr} — per Month`;
     charts['yearly-room']=new Chart(document.getElementById('chart-yearly-room').getContext('2d'),{
       type:'line',
       data:{
         labels,
         datasets:[
-          {label:'Cooling/Room (TRh/RNS)',data:periods.map(p=>p.metrics.rns>0?+(p.billing.reduce((s,r)=>s+r.cooling,0)/p.metrics.rns).toFixed(2):0),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
-          {label:'Energy/Room (kWh/RNS)',data:periods.map(p=>p.metrics.rns>0?+((p.metrics.totalElec||0)/p.metrics.rns).toFixed(2):0),borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+          {label:`Cooling/${ftY.metricAbbr} (TRh/${ftY.metricAbbr})`,data:periods.map(p=>p.metrics.rns>0?+(p.billing.reduce((s,r)=>s+r.cooling,0)/p.metrics.rns).toFixed(2):0),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
+          {label:`Energy/${ftY.metricAbbr} (kWh/${ftY.metricAbbr})`,data:periods.map(p=>p.metrics.rns>0?+((p.metrics.totalElec||0)/p.metrics.rns).toFixed(2):0),borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
         ]
       },
-      options:chartOpts({y:'TRh/RNS',y2:'kWh/RNS',y2right:true})
+      options:chartOpts({y:`TRh/${ftY.metricAbbr}`,y2:`kWh/${ftY.metricAbbr}`,y2right:true})
     });
   }
 
@@ -3114,11 +3144,24 @@ const TREND_METRICS=[
   {key:'cwp',label:'CWP Power (kWh)'},
   {key:'ct',label:'CT Power (kWh)'},
   {key:'aux',label:'Aux Power (kWh)'},
-  {key:'totalElec',label:'Total Hotel Electricity (kWh)'},
+  {key:'totalElec',label:'Total Site Electricity (kWh)'},
   {key:'rns',label:'Room Nights Sold (RNS)'},
   {key:'energyPerRoom',label:'Energy per Room (kWh/RNS)'},
   {key:'coolingPerRoom',label:'Cooling per Room (TRh/RNS)'},
 ];
+
+// Keeps the Trending page's metric labels in sync with the facility-type selector — called
+// once at load and again whenever the selector changes (see onFacilityTypeChange()).
+function updateTrendMetricLabels(){
+  const ft=FACILITY_TYPES[selectedFacilityType]||FACILITY_TYPES.hotel;
+  const rnsM=TREND_METRICS.find(m=>m.key==='rns');
+  const enM=TREND_METRICS.find(m=>m.key==='energyPerRoom');
+  const clM=TREND_METRICS.find(m=>m.key==='coolingPerRoom');
+  if(rnsM) rnsM.label=`${ft.metricLabel} (${ft.metricAbbr})`;
+  if(enM) enM.label=`Energy per ${ft.metricAbbr} (kWh/${ft.metricAbbr})`;
+  if(clM) clM.label=`Cooling per ${ft.metricAbbr} (TRh/${ft.metricAbbr})`;
+}
+updateTrendMetricLabels();
 
 // Minute-level rows (from the Raw Data sheet) — used ONLY by the Custom Correlation section
 // (custom scatter + Spearman + Group Analysis, which all share the same X/Y selectors)
@@ -4473,7 +4516,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
     <div class="card-body"><div class="chart-h220"><canvas id="chart-yearly-load"></canvas></div></div>
   </div>
   <div class="card" id="card-yearly-room" style="margin-bottom:16px">
-    <div class="card-head"><div class="card-title">Cooling per Room &amp; Energy per Room — per Month</div></div>
+    <div class="card-head"><div class="card-title" id="yearly-room-title">Cooling per Room &amp; Energy per Room — per Month</div></div>
     <div class="card-body"><div class="chart-h180"><canvas id="chart-yearly-room"></canvas></div></div>
   </div>
   <div class="card">
@@ -4491,6 +4534,11 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
 let allData=${dataJson};
 let filteredData=[...allData];
 const charts={};
+// Fixed for this client — set from whatever was selected in the tool at export time.
+// Unlike the internal dashboard, the client report has no selector: a client's site type
+// doesn't change month to month, so it's baked in once here instead.
+const CLIENT_FACILITY_TYPE='${selectedFacilityType}';
+const FACILITY_TYPES=${JSON.stringify(FACILITY_TYPES)};
 
 // ── Helpers — identical to the main dashboard ──────
 function serial2date(s){if(!s||isNaN(s))return null;return new Date(Math.round((s-25569)*86400*1000))}
@@ -4620,13 +4668,14 @@ function renderMonthly(){
     '<div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">'+fmt4(s.avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>';
 
   const hotelEl=document.getElementById('kpi-hotel');
+  const ft=FACILITY_TYPES[CLIENT_FACILITY_TYPE]||FACILITY_TYPES.hotel;
   if(s.metrics.rns>0){
-    hotelEl.style.display='grid';
+    hotelEl.style.display='flex';
     hotelEl.innerHTML=
-      '<div class="kpi"><div class="kpi-label">Room Nights Sold</div><div class="kpi-value">'+fmtNum(s.metrics.rns)+'</div><div class="kpi-unit">RNS / Max '+fmtNum(s.metrics.maxRns)+'</div></div>'+
+      '<div class="kpi"><div class="kpi-label">'+ft.metricLabel+'</div><div class="kpi-value">'+fmtNum(s.metrics.rns)+'</div><div class="kpi-unit">'+ft.metricAbbr+' / '+ft.maxLabel+' '+fmtNum(s.metrics.maxRns)+'</div></div>'+
       '<div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">'+fmt4(s.metrics.totalElec)+'</div><div class="kpi-unit">kWh</div></div>'+
-      '<div class="kpi"><div class="kpi-label">Cooling / Room</div><div class="kpi-value">'+fmt4(s.coolingPerRoom)+'</div><div class="kpi-unit">TRh/RNS</div></div>'+
-      '<div class="kpi"><div class="kpi-label">Energy / Room</div><div class="kpi-value">'+fmt4(s.energyPerRoom)+'</div><div class="kpi-unit">kWh/RNS</div></div>';
+      '<div class="kpi"><div class="kpi-label">Cooling / '+ft.metricAbbr+'</div><div class="kpi-value">'+fmt4(s.coolingPerRoom)+'</div><div class="kpi-unit">TRh/'+ft.metricAbbr+'</div></div>'+
+      '<div class="kpi"><div class="kpi-label">Energy / '+ft.metricAbbr+'</div><div class="kpi-value">'+fmt4(s.energyPerRoom)+'</div><div class="kpi-unit">kWh/'+ft.metricAbbr+'</div></div>';
   } else {
     hotelEl.style.display='none';
     hotelEl.innerHTML='';
@@ -4738,11 +4787,14 @@ function renderYearly(){
   const roomCardEl=document.getElementById('card-yearly-room');
   if(roomCardEl) roomCardEl.style.display=s.hasRns?'block':'none';
   if(s.hasRns){
+    const ftY=FACILITY_TYPES[CLIENT_FACILITY_TYPE]||FACILITY_TYPES.hotel;
+    const titleElY=document.getElementById('yearly-room-title');
+    if(titleElY) titleElY.textContent='Cooling per '+ftY.metricAbbr+' & Energy per '+ftY.metricAbbr+' — per Month';
     charts['yearly-room']=new Chart(document.getElementById('chart-yearly-room').getContext('2d'),{
       type:'line',data:{labels,datasets:[
-        {label:'Cooling/Room (TRh/RNS)',data:periods.map(p=>p.metrics.rns>0?+(p.billing.reduce((s,r)=>s+r.cooling,0)/p.metrics.rns).toFixed(2):0),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
-        {label:'Energy/Room (kWh/RNS)',data:periods.map(p=>p.metrics.rns>0?+((p.metrics.totalElec||0)/p.metrics.rns).toFixed(2):0),borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-      ]},options:chartOpts({y:'TRh/RNS',y2:'kWh/RNS',y2right:true})
+        {label:'Cooling/'+ftY.metricAbbr+' (TRh/'+ftY.metricAbbr+')',data:periods.map(p=>p.metrics.rns>0?+(p.billing.reduce((s,r)=>s+r.cooling,0)/p.metrics.rns).toFixed(2):0),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
+        {label:'Energy/'+ftY.metricAbbr+' (kWh/'+ftY.metricAbbr+')',data:periods.map(p=>p.metrics.rns>0?+((p.metrics.totalElec||0)/p.metrics.rns).toFixed(2):0),borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      ]},options:chartOpts({y:'TRh/'+ftY.metricAbbr,y2:'kWh/'+ftY.metricAbbr,y2right:true})
     });
   }
 
