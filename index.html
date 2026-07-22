@@ -819,6 +819,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <button class="page-tab" onclick="showPage('chwp')">CHWP</button>
       <button class="page-tab" onclick="showPage('cwp')">CWP</button>
       <button class="page-tab" onclick="showPage('ct')">CT</button>
+      <button class="page-tab" onclick="showPage('pumphealth')">Pump Health</button>
       <button class="page-tab" onclick="showPage('comments')">Comments</button>
       <button class="page-tab" onclick="showPage('weekly')">Weekly Trend</button>
       <button class="page-tab" onclick="showPage('trending')">Trending</button>
@@ -866,7 +867,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
   <div class="filters-bar">
     <span id="client-badge" style="font-size:12px;font-weight:700;color:var(--ses-blue);background:rgba(10,61,124,.08);padding:5px 12px;border-radius:6px;display:none">👤 <span id="client-name"></span></span>
     <span class="filters-label">Filters:</span>
-    <select id="sel-facility-type" onchange="onFacilityTypeChange()" title="Changes how the occupancy-style KPI is labeled (Room Nights Sold, Ton Production, etc.) — pick the type matching whichever client's data you just loaded.">
+    <select id="sel-facility-type" onchange="onFacilityTypeChange()" title="Auto-detected from the Excel file's 'Facility Type' column when present (defaults to Hotel otherwise). Change manually here if it's wrong.">
       <option value="hotel">🏨 Hotel</option>
       <option value="hospital">🏥 Hospital</option>
       <option value="mall">🏬 Mall</option>
@@ -904,7 +905,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;min-width:280px">
         <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:20px;text-align:center">
-          <div style="font-size:28px;font-weight:800;color:var(--ses-light)">11</div>
+          <div style="font-size:28px;font-weight:800;color:var(--ses-light)">12</div>
           <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Dashboard Pages</div>
         </div>
         <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:20px;text-align:center">
@@ -1007,6 +1008,13 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
             <div style="font-weight:700;color:var(--ses-dark);font-size:13px">CT</div>
           </div>
           <div style="font-size:11px;color:var(--muted);line-height:1.6">Cooling tower efficiency, approach, TDS, pH & COC weekly</div>
+        </div>
+        <div onclick="if(filteredData&&filteredData.length){showPageByName('pumphealth')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:36px;height:36px;background:#1a5fa318;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">⚙️</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Pump Health</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">CHWP & CWP motor frequency distribution, power, flow & head</div>
         </div>
         <div onclick="if(filteredData&&filteredData.length){showPageByName('comments')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
@@ -1294,6 +1302,42 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-coc"></canvas></div></div>
       </div>
     </div>
+  </div>
+
+  <!-- PAGE: PUMP HEALTH -->
+  <div class="page" id="page-pumphealth">
+    <div class="section-title">CHWP — Frequency & Motor Health</div>
+    <div class="chart-grid grid-3" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">CHWP Flow</div><div class="card-sub">Occurrence % + Flow (LPS) — Current + Last Month</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-health-flow"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">CHWP Head</div><div class="card-sub">Occurrence % + Head (m) — Current + Last Month</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-health-head"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">CHWP Power</div><div class="card-sub">Occurrence % + Input Power (kW) — Current + Last Month</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-health-power"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="section-title">CWP — Frequency & Motor Health</div>
+    <div class="chart-grid grid-3">
+      <div class="card">
+        <div class="card-head"><div class="card-title">CWP Flow</div><div class="card-sub">Occurrence % + Flow (LPS) — Current + Last Month</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-health-flow"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">CWP Head</div><div class="card-sub">Occurrence % + Head (m) — Current + Last Month</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-health-head"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">CWP Power</div><div class="card-sub">Occurrence % + Input Power (kW) — Current + Last Month</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-health-power"></canvas></div></div>
+      </div>
+    </div>
+    <div id="pumphealth-empty" class="empty" style="display:none">No CHWP/CWP frequency data found in the loaded file(s). This requires the "CHWP Freq", "CHWP Head", "CWP Freq" and "CWP Head" columns in the Raw Data sheet.</div>
   </div>
 
   <!-- PAGE: COMMENTS -->
@@ -1689,7 +1733,19 @@ async function parseFile(file,client){
         let metrics={};
         const smS=wb.Sheets['Site Metrics'];
         if(smS){const sm=XLSX.utils.sheet_to_json(smS,{header:1,defval:null,raw:true});
-          if(sm.length>1&&sm[1])metrics={rns:+sm[1][1]||0,maxRns:+sm[1][2]||0,totalElec:+sm[1][3]||0,oldEff:+sm[1][4]||0,emissionFactor:+sm[1][5]||0}}
+          if(sm.length>1&&sm[1]){
+            metrics={rns:+sm[1][1]||0,maxRns:+sm[1][2]||0,totalElec:+sm[1][3]||0,oldEff:+sm[1][4]||0,emissionFactor:+sm[1][5]||0};
+            // Optional "Facility Type" column — looked up by header name (not position), so
+            // it works regardless of where it's placed, matching the existing "columns can be
+            // reordered but not renamed" rule for this template. Absent/unrecognized value ->
+            // null, and the dashboard falls back to Hotel (see buildDashboard()).
+            const hdr=sm[0]||[];
+            const iFacility=hdr.findIndex(h=>h&&String(h).trim().toLowerCase()==='facility type');
+            const rawFacility=iFacility>=0?sm[1][iFacility]:null;
+            const normFacility=rawFacility?String(rawFacility).trim().toLowerCase():'';
+            metrics.facilityType=FACILITY_TYPES[normFacility]?normFacility:null;
+          }
+        }
 
         // Weekly Breakdown
         let weekly=[];
@@ -1804,36 +1860,56 @@ async function parseFile(file,client){
         const partloadCWP=Object.values(cwpSheets)[0]||[];
         const partloadCT=Object.values(ctSheets)[0]||[];
 
-        // Raw Data — minute-level readings (Date | Time | CH1..CH3 kW | CHWP | CWP | CT | Aux | Chiller Plant kW | CH1..CH3 TR | Total TR | Approach Cond | Approach Evap | Cond Flow | Evap Flow)
+        // Raw Data — minute-level readings.
+        // Columns are looked up by their row-2 sub-header text, NOT by fixed position — this
+        // sheet's column order can (and did) change between clients/versions (e.g. inserting
+        // the CHWP/CWP Freq & Head columns shifted everything after them). Matches the "you
+        // can reorder columns but not rename them" rule documented in the Excel template.
         let rawData=[];
         const rdS=findSheetCI(wb,'Raw Data');
         if(rdS){
           const rd=XLSX.utils.sheet_to_json(rdS,{header:1,defval:null,raw:true});
+          const hdr2=(rd[1]||[]).map(h=>h==null?'':String(h).trim().toLowerCase().replace(/\s+/g,' '));
+          const iCol=name=>hdr2.indexOf(name.toLowerCase().replace(/\s+/g,' '));
+          const idx={
+            ch1:iCol('CH1 (kW)'), ch2:iCol('CH2 (kW)'), ch3:iCol('CH3 (kW)'),
+            chwp:iCol('CHWP (kW)'), cwp:iCol('CWP (kW)'), ct:iCol('CT (kW)'), aux:iCol('Aux'),
+            plant:iCol('Chiller Plant (kW)'), totalTR:iCol('Total (TR)'),
+            condApproach:iCol('Approach Condenser'), evapApproach:iCol('Approach Evaporator'),
+            condFlow:iCol('Condenser Flow'), evapFlow:iCol('Evaporator Flow'),
+            chwpFreq:iCol('CHWP Freq'), chwpHead:iCol('CHWP Head'),
+            cwpFreq:iCol('CWP Freq'), cwpHead:iCol('CWP Head'),
+          };
+          const get=(row,i)=>i>=0&&row[i]!=null?+row[i]:null;
           for(let i=2;i<rd.length;i++){ // skip 2 header rows
             const row=rd[i];
             const dSerial=typeof row[0]==='number'?row[0]:null;
             const tSerial=typeof row[1]==='number'?row[1]:0;
             if(dSerial==null)continue;
             const fullSerial=dSerial+tSerial;
-            const ch1=+row[2]||0, ch2=+row[3]||0, ch3=+row[4]||0;
-            const totalTR=+row[13]||0;
-            const chillerPlant=+row[9]||0;
+            const ch1=get(row,idx.ch1)||0, ch2=get(row,idx.ch2)||0, ch3=get(row,idx.ch3)||0;
+            const totalTR=get(row,idx.totalTR)||0;
+            const chillerPlant=get(row,idx.plant)||0;
             rawData.push({
               serial:fullSerial,
               ch1,ch2,ch3,
               chiller:ch1+ch2+ch3,
-              chwp:+row[5]||0,
-              cwp:+row[6]||0,
-              ct:+row[7]||0,
-              aux:+row[8]||0,
+              chwp:get(row,idx.chwp)||0,
+              cwp:get(row,idx.cwp)||0,
+              ct:get(row,idx.ct)||0,
+              aux:get(row,idx.aux)||0,
               totalPlant:chillerPlant,
               cooling:totalTR,
               plantEff:totalTR>0?chillerPlant/totalTR:null,
               chillerEff:totalTR>0?(ch1+ch2+ch3)/totalTR:null,
-              condApproach:row[14]!=null?+row[14]:null,
-              evapApproach:row[15]!=null?+row[15]:null,
-              condFlow:row[16]!=null?+row[16]:null,
-              evapFlow:row[17]!=null?+row[17]:null,
+              condApproach:get(row,idx.condApproach),
+              evapApproach:get(row,idx.evapApproach),
+              condFlow:get(row,idx.condFlow),
+              evapFlow:get(row,idx.evapFlow),
+              chwpFreq:get(row,idx.chwpFreq),
+              chwpHead:get(row,idx.chwpHead),
+              cwpFreq:get(row,idx.cwpFreq),
+              cwpHead:get(row,idx.cwpHead),
             });
           }
         }
@@ -1871,6 +1947,18 @@ async function buildDashboard(){
     document.getElementById('client-name').textContent=clientNames.join(', ');
     document.getElementById('client-badge').style.display='inline-flex';
   }
+
+  // Auto-detect facility type from the loaded Excel files' "Facility Type" column
+  // (see parseFile()). Picks the most common value found; falls back to Hotel if no file
+  // specifies one (e.g. older files created before this column existed). You can still
+  // override the pre-selected value manually via the dropdown if it's wrong.
+  const facilityVotes={};
+  allData.forEach(d=>{const f=d.metrics?.facilityType;if(f) facilityVotes[f]=(facilityVotes[f]||0)+1;});
+  const detected=Object.keys(facilityVotes).sort((a,b)=>facilityVotes[b]-facilityVotes[a])[0];
+  selectedFacilityType=detected||'hotel';
+  const selFT=document.getElementById('sel-facility-type');
+  if(selFT) selFT.value=selectedFacilityType;
+  updateTrendMetricLabels();
 
   document.getElementById('drop-zone').style.display='none';
   document.getElementById('dashboard').style.display='block';
@@ -2003,6 +2091,7 @@ function renderCurrentPage(){
   else if(currentPage==='chwp')renderCHWP();
   else if(currentPage==='cwp')renderCWP();
   else if(currentPage==='ct')renderCT();
+  else if(currentPage==='pumphealth')renderPumpHealth();
   else if(currentPage==='comments')renderComments();
   else if(currentPage==='weekly')renderWeeklyTrend();
   else if(currentPage==='trending')renderTrending();
@@ -2754,6 +2843,85 @@ function renderCT(){
       options:chartOpts({y:'COC'})
     });
   }
+}
+
+// ═══════════════════════════════════════════════════
+// PUMP HEALTH — CHWP/CWP frequency & motor health
+// Computed entirely client-side from Raw Data's per-minute rows, matching the same
+// cumulative-bucket logic as the Excel "CHWP Health"/"CWP Health" sheets (frequency
+// buckets 20-50 Hz, 1 Hz steps), but without depending on Excel formulas or their
+// hardcoded row ranges — this recomputes correctly no matter how many rows are loaded.
+function computePumpFrequencyBuckets(rows,freqKey,powerKey,flowKey,headKey){
+  rows=rows.filter(r=>r[freqKey]!=null);
+  if(!rows.length)return[];
+  const boundaries=[];
+  for(let f=20;f<=50;f++)boundaries.push(f);
+  const buckets=boundaries.map(b=>({freq:b,rows:[]}));
+  rows.forEach(r=>{
+    const f=r[freqKey];
+    let idx=buckets.findIndex((b,i)=>i===0?f<=b.freq:(f>buckets[i-1].freq&&f<=b.freq));
+    if(idx===-1)idx=buckets.length-1; // clamp any reading above the top boundary
+    buckets[idx].rows.push(r);
+  });
+  const total=rows.length;
+  return buckets.map(b=>({
+    freq:b.freq,
+    occurrence:b.rows.length,
+    occurrencePct:total>0?b.rows.length/total*100:0,
+    // null (not 0) when a bucket has no data — matches the Excel sheet's IFERROR->"-"
+    // behavior, and lets Chart.js draw a real gap instead of a misleading dip to zero.
+    avgPower:b.rows.length?b.rows.reduce((s,r)=>s+(r[powerKey]||0),0)/b.rows.length:null,
+    avgFlow:b.rows.length?b.rows.reduce((s,r)=>s+(r[flowKey]||0),0)/b.rows.length:null,
+    avgHead:b.rows.length?b.rows.reduce((s,r)=>s+(r[headKey]||0),0)/b.rows.length:null,
+  }));
+}
+
+function renderPumpHealth(){
+  const{thisPer,lastPer}=getPeriodHelpers();
+  const rawFor=period=>period?allData.filter(d=>d.period===period).flatMap(d=>d.rawData||[]):[];
+  const thisRaw=rawFor(thisPer);
+  const lastRaw=rawFor(lastPer);
+
+  const chwpThis=computePumpFrequencyBuckets(thisRaw,'chwpFreq','chwp','evapFlow','chwpHead');
+  const chwpLast=computePumpFrequencyBuckets(lastRaw,'chwpFreq','chwp','evapFlow','chwpHead');
+  const cwpThis=computePumpFrequencyBuckets(thisRaw,'cwpFreq','cwp','condFlow','cwpHead');
+  const cwpLast=computePumpFrequencyBuckets(lastRaw,'cwpFreq','cwp','condFlow','cwpHead');
+
+  const emptyEl=document.getElementById('pumphealth-empty');
+  const hasData=chwpThis.length>0||cwpThis.length>0;
+  if(emptyEl) emptyEl.style.display=hasData?'none':'block';
+
+  // metric: 'avgFlow'|'avgHead'|'avgPower' ; unit label for the y2 axis ; color for the current-month line
+  const mkChart=(canvasId,buckets,bucketsLast,metric,unitLabel,color)=>{
+    destroyChart(canvasId);
+    const el=document.getElementById('chart-'+canvasId);
+    if(!el)return;
+    if(!buckets.length){
+      const sub=el.closest('.card').querySelector('.card-sub');
+      if(sub) sub.textContent='No frequency data in the loaded file(s)';
+      return;
+    }
+    const labels=buckets.map(b=>b.freq+' Hz');
+    const fmt=v=>v==null?null:+v.toFixed(2);
+    const ds=[
+      {label:'Occurrence (%)',data:buckets.map(b=>+b.occurrencePct.toFixed(2)),backgroundColor:'rgba(59,130,246,.25)',borderRadius:3,yAxisID:'y'},
+      {label:unitLabel,data:buckets.map(b=>fmt(b[metric])),type:'line',borderColor:color,pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:false},
+    ];
+    if(bucketsLast.length){
+      // align "last month" values to the same frequency labels as the current month;
+      // a bucket missing from last month (or with no data) stays null -> real gap, not a fake 0
+      const lastByFreq={}; bucketsLast.forEach(b=>lastByFreq[b.freq]=b[metric]);
+      ds.push({label:unitLabel+' Last Month',data:buckets.map(b=>fmt(lastByFreq[b.freq])),type:'line',borderColor:'#f59e0b',pointRadius:0,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:false});
+    }
+    charts[canvasId]=new Chart(el.getContext('2d'),{type:'bar',data:{labels,datasets:ds},options:chartOpts({y:'Occurrence %',y2:unitLabel,y2right:true})});
+  };
+
+  mkChart('chwp-health-flow',chwpThis,chwpLast,'avgFlow','Flow (LPS)','#3b82f6');
+  mkChart('chwp-health-head',chwpThis,chwpLast,'avgHead','Head (m)','#8b5cf6');
+  mkChart('chwp-health-power',chwpThis,chwpLast,'avgPower','Power (kW)','#10b981');
+  mkChart('cwp-health-flow',cwpThis,cwpLast,'avgFlow','Flow (LPS)','#3b82f6');
+  mkChart('cwp-health-head',cwpThis,cwpLast,'avgHead','Head (m)','#8b5cf6');
+  mkChart('cwp-health-power',cwpThis,cwpLast,'avgPower','Power (kW)','#10b981');
 }
 
 // ═══════════════════════════════════════════════════
