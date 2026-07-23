@@ -1306,7 +1306,12 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
 
   <!-- PAGE: PUMP HEALTH -->
   <div class="page" id="page-pumphealth">
-    <div class="section-title">CHWP — Frequency & Motor Health</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="section-title" style="margin:0">CHWP — Frequency & Motor Health</div>
+      <select id="sel-pumphealth-chwp" onchange="renderPumpHealth()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer">
+        <option value="">All CHWP (merged)</option>
+      </select>
+    </div>
     <div class="chart-grid grid-3" style="margin-bottom:16px">
       <div class="card">
         <div class="card-head"><div class="card-title">CHWP Flow</div><div class="card-sub">Occurrence % + Flow (LPS) — Current + Last Month</div></div>
@@ -1322,7 +1327,12 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       </div>
     </div>
 
-    <div class="section-title">CWP — Frequency & Motor Health</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="section-title" style="margin:0">CWP — Frequency & Motor Health</div>
+      <select id="sel-pumphealth-cwp" onchange="renderPumpHealth()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer">
+        <option value="">All CWP (merged)</option>
+      </select>
+    </div>
     <div class="chart-grid grid-3">
       <div class="card">
         <div class="card-head"><div class="card-title">CWP Flow</div><div class="card-sub">Occurrence % + Flow (LPS) — Current + Last Month</div></div>
@@ -1337,7 +1347,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-health-power"></canvas></div></div>
       </div>
     </div>
-    <div id="pumphealth-empty" class="empty" style="display:none">No CHWP/CWP frequency data found in the loaded file(s). This requires the "CHWP Freq", "CHWP Head", "CWP Freq" and "CWP Head" columns in the Raw Data sheet.</div>
+    <div id="pumphealth-empty" class="empty" style="display:none">No CHWP/CWP frequency data found in the loaded file(s). This requires the "CHWP Freq"/"CHWP Head" (or numbered "CHWP 1 Freq", "CHWP 2 Freq"...) columns in the Raw Data sheet.</div>
   </div>
 
   <!-- PAGE: COMMENTS -->
@@ -1877,10 +1887,39 @@ async function parseFile(file,client){
             plant:iCol('Chiller Plant (kW)'), totalTR:iCol('Total (TR)'),
             condApproach:iCol('Approach Condenser'), evapApproach:iCol('Approach Evaporator'),
             condFlow:iCol('Condenser Flow'), evapFlow:iCol('Evaporator Flow'),
-            chwpFreq:iCol('CHWP Freq'), chwpHead:iCol('CHWP Head'),
-            cwpFreq:iCol('CWP Freq'), cwpHead:iCol('CWP Head'),
           };
           const get=(row,i)=>i>=0&&row[i]!=null?+row[i]:null;
+
+          // Multi-pump detection for CHWP/CWP Freq/Head/Power — mirrors the CH1/CH2/CH3
+          // pattern. Freq/Head accept a bare column (no number = pump "1", for single-pump
+          // sites set up before this existed) OR numbered columns for multiple pumps. Power
+          // per pump REQUIRES a number ("CHWP 1 (kW)") since the bare "CHWP (kW)" column
+          // already means something else (the plant-level total used elsewhere) — for a
+          // single detected pump with no numbered power column, that aggregate is reused
+          // as that one pump's power.
+          function detectPumpCols(prefix){
+            const freqCols={},headCols={},powerCols={};
+            hdr2.forEach((h,i)=>{
+              let m;
+              if((m=h.match(new RegExp('^'+prefix+'\\s*(\\d*)\\s*freq$'))))freqCols[m[1]||'1']=i;
+              if((m=h.match(new RegExp('^'+prefix+'\\s*(\\d*)\\s*head$'))))headCols[m[1]||'1']=i;
+              if((m=h.match(new RegExp('^'+prefix+'\\s+(\\d+)\\s*\\(kw\\)$'))))powerCols[m[1]]=i;
+            });
+            const pumpIds=[...new Set([...Object.keys(freqCols),...Object.keys(headCols)])].sort();
+            return{freqCols,headCols,powerCols,pumpIds};
+          }
+          const chwpPumpCols=detectPumpCols('chwp');
+          const cwpPumpCols=detectPumpCols('cwp');
+          const buildPumps=(row,cols,aggregateIdx)=>{
+            const out={};
+            cols.pumpIds.forEach(id=>{
+              const power=cols.powerCols[id]!=null?get(row,cols.powerCols[id])
+                :(cols.pumpIds.length===1?get(row,aggregateIdx):null); // single pump -> reuse aggregate
+              out[id]={freq:get(row,cols.freqCols[id]),head:get(row,cols.headCols[id]),power};
+            });
+            return out;
+          };
+
           for(let i=2;i<rd.length;i++){ // skip 2 header rows
             const row=rd[i];
             const dSerial=typeof row[0]==='number'?row[0]:null;
@@ -1906,10 +1945,8 @@ async function parseFile(file,client){
               evapApproach:get(row,idx.evapApproach),
               condFlow:get(row,idx.condFlow),
               evapFlow:get(row,idx.evapFlow),
-              chwpFreq:get(row,idx.chwpFreq),
-              chwpHead:get(row,idx.chwpHead),
-              cwpFreq:get(row,idx.cwpFreq),
-              cwpHead:get(row,idx.cwpHead),
+              chwpPumps:buildPumps(row,chwpPumpCols,idx.chwp),
+              cwpPumps:buildPumps(row,cwpPumpCols,idx.cwp),
             });
           }
         }
@@ -2851,28 +2888,43 @@ function renderCT(){
 // cumulative-bucket logic as the Excel "CHWP Health"/"CWP Health" sheets (frequency
 // buckets 20-50 Hz, 1 Hz steps), but without depending on Excel formulas or their
 // hardcoded row ranges — this recomputes correctly no matter how many rows are loaded.
-function computePumpFrequencyBuckets(rows,freqKey,powerKey,flowKey,headKey){
-  rows=rows.filter(r=>r[freqKey]!=null);
-  if(!rows.length)return[];
+// pumpId: a specific pump number ('1','2'...) or '' to merge every detected pump together.
+// Flow has no per-pump breakdown in the template (only Freq/Head/Power do), so it always
+// comes from the plant-level Evaporator/Condenser Flow column regardless of pump selection.
+function computePumpFrequencyBuckets(rows,pumpsKey,pumpId,flowKey){
+  const readings=[]; // {freq,head,power,flow}
+  rows.forEach(r=>{
+    const pumps=r[pumpsKey]||{};
+    const ids=pumpId?(pumps[pumpId]?[pumpId]:[]):Object.keys(pumps);
+    ids.forEach(id=>{
+      const p=pumps[id];
+      if(p&&p.freq!=null)readings.push({freq:p.freq,head:p.head,power:p.power,flow:r[flowKey]});
+    });
+  });
+  if(!readings.length)return[];
   const boundaries=[];
   for(let f=20;f<=50;f++)boundaries.push(f);
   const buckets=boundaries.map(b=>({freq:b,rows:[]}));
-  rows.forEach(r=>{
-    const f=r[freqKey];
+  readings.forEach(r=>{
+    const f=r.freq;
     let idx=buckets.findIndex((b,i)=>i===0?f<=b.freq:(f>buckets[i-1].freq&&f<=b.freq));
     if(idx===-1)idx=buckets.length-1; // clamp any reading above the top boundary
     buckets[idx].rows.push(r);
   });
-  const total=rows.length;
+  const total=readings.length;
+  const avg=(rows,key)=>{
+    const vals=rows.map(r=>r[key]).filter(v=>v!=null);
+    return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length:null;
+  };
   return buckets.map(b=>({
     freq:b.freq,
     occurrence:b.rows.length,
     occurrencePct:total>0?b.rows.length/total*100:0,
     // null (not 0) when a bucket has no data — matches the Excel sheet's IFERROR->"-"
     // behavior, and lets Chart.js draw a real gap instead of a misleading dip to zero.
-    avgPower:b.rows.length?b.rows.reduce((s,r)=>s+(r[powerKey]||0),0)/b.rows.length:null,
-    avgFlow:b.rows.length?b.rows.reduce((s,r)=>s+(r[flowKey]||0),0)/b.rows.length:null,
-    avgHead:b.rows.length?b.rows.reduce((s,r)=>s+(r[headKey]||0),0)/b.rows.length:null,
+    avgPower:avg(b.rows,'power'),
+    avgFlow:avg(b.rows,'flow'),
+    avgHead:avg(b.rows,'head'),
   }));
 }
 
@@ -2882,10 +2934,33 @@ function renderPumpHealth(){
   const thisRaw=rawFor(thisPer);
   const lastRaw=rawFor(lastPer);
 
-  const chwpThis=computePumpFrequencyBuckets(thisRaw,'chwpFreq','chwp','evapFlow','chwpHead');
-  const chwpLast=computePumpFrequencyBuckets(lastRaw,'chwpFreq','chwp','evapFlow','chwpHead');
-  const cwpThis=computePumpFrequencyBuckets(thisRaw,'cwpFreq','cwp','condFlow','cwpHead');
-  const cwpLast=computePumpFrequencyBuckets(lastRaw,'cwpFreq','cwp','condFlow','cwpHead');
+  // Populate the pump-instance selectors from whatever pump IDs are actually present
+  const detectPumpIds=(rows,pumpsKey)=>{
+    const ids=new Set();
+    rows.forEach(r=>Object.keys(r[pumpsKey]||{}).forEach(id=>ids.add(id)));
+    return[...ids].sort();
+  };
+  const chwpIds=detectPumpIds(thisRaw,'chwpPumps');
+  const cwpIds=detectPumpIds(thisRaw,'cwpPumps');
+  const selCHWP=document.getElementById('sel-pumphealth-chwp');
+  const selCWP=document.getElementById('sel-pumphealth-cwp');
+  if(selCHWP){
+    const prev=selCHWP.value;
+    selCHWP.innerHTML='<option value="">All CHWP (merged)</option>'+chwpIds.map(id=>`<option value="${id}">CHWP ${id}</option>`).join('');
+    if(chwpIds.includes(prev))selCHWP.value=prev;
+  }
+  if(selCWP){
+    const prev=selCWP.value;
+    selCWP.innerHTML='<option value="">All CWP (merged)</option>'+cwpIds.map(id=>`<option value="${id}">CWP ${id}</option>`).join('');
+    if(cwpIds.includes(prev))selCWP.value=prev;
+  }
+  const chwpPumpId=selCHWP?selCHWP.value:'';
+  const cwpPumpId=selCWP?selCWP.value:'';
+
+  const chwpThis=computePumpFrequencyBuckets(thisRaw,'chwpPumps',chwpPumpId,'evapFlow');
+  const chwpLast=computePumpFrequencyBuckets(lastRaw,'chwpPumps',chwpPumpId,'evapFlow');
+  const cwpThis=computePumpFrequencyBuckets(thisRaw,'cwpPumps',cwpPumpId,'condFlow');
+  const cwpLast=computePumpFrequencyBuckets(lastRaw,'cwpPumps',cwpPumpId,'condFlow');
 
   const emptyEl=document.getElementById('pumphealth-empty');
   const hasData=chwpThis.length>0||cwpThis.length>0;
