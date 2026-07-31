@@ -1630,15 +1630,15 @@ function fmtDate(s){const d=serial2date(s);if(!d)return'—';return d.toLocaleDa
 function fmtShort(s){const d=serial2date(s);if(!d)return'';return d.getDate()+'/'+(d.getMonth()+1)}
 function fmtNum(n,dec=0){
   if(n==null||isNaN(n))return'—';
-  return n.toLocaleString('fr-FR',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  return n.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
 }
 function fmt4(n){
   if(n==null||isNaN(n))return'—';
-  return n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 function fmtBig(n){
   if(n==null||isNaN(n))return'—';
-  return Math.round(n).toLocaleString('fr-FR');
+  return Math.round(n).toLocaleString('en-US');
 }
 function period(s){const d=serial2date(s);if(!d)return null;const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');return y+'-'+m}
 function periodLabel(p){if(!p||p==='—')return p;const[y,mo]=p.split('-');const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return(mn[parseInt(mo,10)-1]||mo)+' '+y}
@@ -4748,11 +4748,11 @@ function serial2date(s){if(!s||isNaN(s))return null;return new Date(Math.round((
 function fmtShort(s){const d=serial2date(s);if(!d)return'';return d.getDate()+'/'+(d.getMonth()+1)}
 function fmtNum(n,dec=0){
   if(n==null||isNaN(n))return'—';
-  return n.toLocaleString('fr-FR',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  return n.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
 }
 function fmt4(n){
   if(n==null||isNaN(n))return'—';
-  return n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 function periodLabel(p){if(!p||p==='—')return p;const[y,mo]=p.split('-');const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return(mn[parseInt(mo,10)-1]||mo)+' '+y}
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
