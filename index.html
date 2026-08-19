@@ -1694,10 +1694,14 @@ Chart.register(dlAutoPad);
 Chart.defaults.set('plugins.datalabels',{
   display:(ctx)=>isChartFullscreen(ctx.chart)?'auto':false,
   color:dlColor,
-  font:{size:9,weight:'600'},
+  // Labels only ever render in fullscreen (see display above) — there's a lot
+  // more room there than the tiny 9px that made sense on a crowded card, so
+  // bump the size up whenever it's actually showing instead of leaving it at
+  // the normal-size value that just never gets used.
+  font:(ctx)=>({size:isChartFullscreen(ctx.chart)?13:9,weight:'600'}),
   anchor:'end',
   align:(ctx)=>ctx.chart.options.indexAxis==='y'?'right':'top',
-  offset:3,
+  offset:(ctx)=>isChartFullscreen(ctx.chart)?5:3,
   clamp:true,
   // Never draw past the chart's own plot area — a label on the very top/tallest
   // point must not be able to spill upward into the legend or title above it.
@@ -2725,16 +2729,27 @@ function renderDetailed(){
       stack:'eff',
       datalabels:{
         anchor:'center',align:'center',color:'#fff',
-        font:{size:9,weight:'700'},
+        font:{size:10,weight:'700'},
         textStrokeColor:'rgba(0,0,0,.35)',textStrokeWidth:2,
         formatter:v=>v>0.005?keyLabels[i]+' '+fmtEff(v):'',
         // Deliberately NOT 'auto' here: with several segments centered right next to
         // each other in a stack, 'auto' treats adjacent-but-non-overlapping labels
         // (e.g. CWP squeezed between CHWP and CT) as colliding and drops one — even
-        // though each sits cleanly inside its own segment. The value threshold below
-        // is the only gate that matters: hide the tiny slivers (e.g. Aux), show
-        // everything else unconditionally.
-        display:(ctx)=>ctx.dataset.data[ctx.dataIndex]>0.005,
+        // though each sits cleanly inside its own segment. Instead, the gate below
+        // checks the segment's own rendered pixel height against this label's actual
+        // font size: a segment thinner than the text (e.g. a 1-2px Aux sliver) hides
+        // its label rather than spilling the text into the segments above/below it —
+        // that's what was happening once the font got bigger than tiny segments could
+        // physically hold.
+        display:(ctx)=>{
+          if(!(ctx.dataset.data[ctx.dataIndex]>0.005))return false;
+          const el=ctx.chart.getDatasetMeta(ctx.datasetIndex).data[ctx.dataIndex];
+          const segH=el?Math.abs(el.height):0;
+          // Needs real breathing room above/below the text, not just enough pixels to
+          // avoid literally touching the segment's edges — a label that just barely
+          // fits reads as cramped. ~2.4x the font size leaves visible padding.
+          return segH>=24;
+        },
       }
     }));
     // Zero-height marker dataset stacked on top of each bar, purely so its
@@ -2743,10 +2758,10 @@ function renderDetailed(){
     effDatasets.push({
       label:'Total',data:effTotals.map(()=>0),stack:'eff',backgroundColor:'transparent',
       datalabels:{
-        anchor:'end',align:'end',offset:6,
-        color:'#fff',backgroundColor:'#334155',borderRadius:4,
-        padding:{top:3,bottom:3,left:7,right:7},
-        font:{size:11,weight:'800'},
+        anchor:'end',align:'end',offset:7,
+        color:'#fff',backgroundColor:'#334155',borderRadius:5,
+        padding:{top:4,bottom:4,left:8,right:8},
+        font:{size:13,weight:'800'},
         formatter:(v,ctx)=>fmtEff(effTotals[ctx.dataIndex]),
         display:true,
       }
@@ -2754,7 +2769,11 @@ function renderDetailed(){
     // The "Total" badge floats above each bar (anchor:'end' + offset on the zero-height
     // marker dataset) — the default 6% axis grace isn't always enough room for its
     // rounded background + text, so give the y-axis an explicit ceiling well above the
-    // tallest total instead of relying on Chart.js' auto-scaled max.
+    // tallest total instead of relying on Chart.js' auto-scaled max. A *hard* max
+    // (not suggestedMax) — suggestedMax only sets a floor that Chart.js is still free
+    // to round up past on its own "nice number" tick logic (e.g. a real max of 0.74
+    // was getting rounded all the way up to an axis of 1.0, leaving a big empty band
+    // above the bars for no reason). A hard max stops right where the headroom ends.
     const maxEffTotal=Math.max(...effTotals,0);
     charts['eff-compare']=new Chart(document.getElementById('chart-eff-compare').getContext('2d'),{
       type:'bar',
@@ -2763,7 +2782,7 @@ function renderDetailed(){
         responsive:true,maintainAspectRatio:false,
         scales:{
           x:{stacked:true,ticks:{color:'#64748b',font:{size:11}},grid:{display:false}},
-          y:{stacked:true,suggestedMax:maxEffTotal*1.22,title:{display:true,text:'Efficiency (kW/TR)',color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(209,217,230,.8)'}}
+          y:{stacked:true,max:maxEffTotal*1.15,title:{display:true,text:'Efficiency (kW/TR)',color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(209,217,230,.8)'}}
         },
         plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Total'?'':c.dataset.label+': '+fmtEff(c.raw)+' kW/TR'}}}
       }
