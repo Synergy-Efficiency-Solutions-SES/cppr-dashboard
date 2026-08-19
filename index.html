@@ -6,6 +6,7 @@
 <title>CPPR — Energy Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -74,6 +75,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 .file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#fff;border:1px solid var(--border);border-radius:8px;font-size:12px;box-shadow:0 1px 3px rgba(10,61,124,.04)}
 .file-item-left{display:flex;align-items:center;gap:8px}
 .client-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.file-remove-btn{background:none;border:none;color:var(--muted);font-size:13px;line-height:1;cursor:pointer;padding:3px 6px;border-radius:5px;transition:background .15s,color .15s}
+.file-remove-btn:hover{background:#fee2e2;color:#dc2626}
 
 /* DASHBOARD */
 #dashboard{display:none}
@@ -106,6 +109,14 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 
 /* CHART CARDS */
 .chart-grid{display:grid;gap:16px}
+/* Without this, a CSS Grid column's implicit min-width defaults to its content's
+   min-content size. A <canvas> is a replaced element that doesn't "shrink to fit"
+   like text does, so if it's ever wider than its column even for one layout pass
+   (e.g. right after collapsing a fullscreen-expanded chart, before JS has re-run
+   Chart.js's resize()), the grid permanently locks that column at the canvas's
+   width and starves the sibling column. min-width:0 lets tracks size purely by
+   their 1fr/2fr share instead of being held hostage by a child's natural size. */
+.chart-grid>*{min-width:0}
 .grid-2{grid-template-columns:1fr 1fr}
 .grid-3{grid-template-columns:1fr 1fr 1fr}
 .grid-1-2{grid-template-columns:1fr 2fr}
@@ -113,6 +124,30 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 @media(max-width:900px){.grid-2,.grid-3,.grid-1-2,.grid-2-1{grid-template-columns:1fr}}
 .card{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(10,61,124,.06)}
 .card-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fff}
+.expand-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted);padding:3px 7px;border-radius:5px;flex-shrink:0;margin-left:8px;line-height:1}
+.expand-btn:hover{background:var(--surface2);color:var(--ses-blue)}
+/* Fullscreen chart expand — the CARD ITSELF is blown up in place via a CSS class
+   (see .card.chart-fullscreen-active below) rather than moving its canvas into a
+   separate modal. Moving the live <canvas> out of the CSS grid and back in was
+   leaving the grid's track sizing in a bad state on close (an empty grid column
+   briefly collapses its intrinsic size, and the sibling column doesn't reliably
+   recompute back to its normal share). Toggling position:fixed on the card never
+   removes it from the DOM, so the grid it lives in is completely unaffected. */
+#chart-fullscreen-backdrop{display:none;position:fixed;inset:0;background:rgba(7,30,61,.85);z-index:9998}
+#chart-fullscreen-backdrop.show{display:block}
+.card.chart-fullscreen-active{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:min(1400px,calc(100vw - 64px));height:min(880px,calc(100vh - 64px));
+  z-index:9999;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.4);
+}
+.card.chart-fullscreen-active .card-head{flex-shrink:0}
+.card.chart-fullscreen-active .card-body{flex:1;min-height:0;overflow:auto}
+.card.chart-fullscreen-active .chart-h180,
+.card.chart-fullscreen-active .chart-h220,
+.card.chart-fullscreen-active .chart-h260,
+.card.chart-fullscreen-active .chart-h300,
+.card.chart-fullscreen-active .chart-h320{height:100% !important}
 .card-title{font-size:12px;font-weight:700;color:var(--ses-blue)}
 .card-sub{font-size:10px;color:var(--muted);margin-top:2px}
 .card-body{padding:14px 16px;background:#fff}
@@ -166,6 +201,10 @@ tr:hover td{background:rgba(10,61,124,.03)}
   <div class="loader-text" id="loader-text">Loading...</div>
   <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
 </div>
+
+<!-- Backdrop shown behind whichever chart card is currently expanded in place — see
+     openChartFullscreen() / .card.chart-fullscreen-active in the CSS above. -->
+<div id="chart-fullscreen-backdrop" onclick="closeChartFullscreen()"></div>
 
 <header>
   <div class="logo">
@@ -876,6 +915,12 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
     </select>
     <select id="sel-year" onchange="onYearChange()"><option value="">All Years</option></select>
     <div id="month-pills" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center"></div>
+    <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
+      Compare to:
+      <select id="sel-compare-to" onchange="onCompareToChange()" title="Applies everywhere a 'Last Month' comparison line is shown (Chiller Plant, Main CH, CHWP, CWP, CT, Pump Health). Defaults to the chronologically-previous month.">
+        <option value="">Previous month (default)</option>
+      </select>
+    </span>
     <span id="filter-info" style="font-size:11px;color:var(--muted);margin-left:auto"></span>
   </div>
 
@@ -1103,7 +1148,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card">
           <div class="card-head"><div class="card-title">Efficiency Comparison vs Last Month</div><div class="card-sub">Chiller + CHWP + CWP + CT + Aux (kW/TR)</div></div>
-          <div class="card-body"><div class="chart-h220"><canvas id="chart-eff-compare"></canvas></div></div>
+          <div class="card-body"><div class="chart-h300"><canvas id="chart-eff-compare"></canvas></div></div>
         </div>
         <div id="eff-shift-kpis" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px"></div>
         <div class="card">
@@ -1163,6 +1208,16 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-pl"></canvas></div></div>
       </div>
       <div class="card">
+        <div class="card-head"><div class="card-title">Evaporator Flow vs Part-Load</div><div class="card-sub">Occurrence % + Evaporator Flow (LPS) vs Part Load</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-pl-flow"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Evaporator Approach vs Part-Load</div><div class="card-sub">Occurrence % + Evaporator Approach (°C) vs Part Load</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-pl-approach"></canvas></div></div>
+      </div>
+      <div class="card">
         <div class="card-head"><div class="card-title">Chilled Water Flow — Weekly</div><div class="card-sub">CHW Flow (LPS) per Week</div></div>
         <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-flow"></canvas></div></div>
       </div>
@@ -1193,6 +1248,16 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-pl"></canvas></div></div>
       </div>
       <div class="card">
+        <div class="card-head"><div class="card-title">Condenser Flow vs Part-Load</div><div class="card-sub">Occurrence % + Condenser Flow (LPS) vs Part Load</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-pl-flow"></canvas></div></div>
+      </div>
+    </div>
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Condenser Approach vs Part-Load</div><div class="card-sub">Occurrence % + Condenser Approach (°C) vs Part Load</div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-pl-approach"></canvas></div></div>
+      </div>
+      <div class="card">
         <div class="card-head"><div class="card-title">Condenser Water Flow — Weekly</div><div class="card-sub">CW Flow (LPS) per Week</div></div>
         <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-flow"></canvas></div></div>
       </div>
@@ -1201,10 +1266,6 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <div class="card">
         <div class="card-head"><div class="card-title">Condenser Approach — Weekly</div><div class="card-sub">°C per Week</div></div>
         <div class="card-body"><div class="chart-h220"><canvas id="chart-cond-approach"></canvas></div></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div class="card-title">Condenser Flow vs Part Load</div><div class="card-sub">Current + Last Month</div></div>
-        <div class="card-body"><div class="chart-h220"><canvas id="chart-cwp-pl-flow"></canvas></div></div>
       </div>
     </div>
   </div>
@@ -1237,19 +1298,16 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-coc"></canvas></div></div>
       </div>
     </div>
+    <div class="chart-grid grid-2" style="margin-top:16px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Condenser Makeup Water — Weekly</div><div class="card-sub">m³ per Week</div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-makeup"></canvas></div></div>
+      </div>
+    </div>
   </div>
 
   <!-- PAGE: PUMP HEALTH -->
   <div class="page" id="page-pumphealth">
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-body" style="padding:14px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <label style="font-size:11px;color:var(--muted);font-weight:600">Compare "Last Month" lines to:</label>
-        <select id="sel-pumphealth-compare" onchange="renderPumpHealth()" style="background:#fff;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">
-          <option value="">Previous month (default)</option>
-        </select>
-        <span style="font-size:11px;color:var(--muted)">Applies to every chart on this page</span>
-      </div>
-    </div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
       <div class="section-title" style="margin:0">CHWP — Frequency & Motor Health</div>
       <select id="sel-pumphealth-chwp" onchange="renderPumpHealth()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer">
@@ -1527,7 +1585,116 @@ let allData = [];
 let filteredData = [];
 let charts = {};
 let currentPage = 'home';
+
+// ═══════════════════════════════════════════════════
+// CHART DATA LABELS (chartjs-plugin-datalabels)
+// Cards stay clean at normal size — no labels at all. Expanding a chart to
+// fullscreen (openChartFullscreen — see .chart-fullscreen-active) is the only
+// time labels appear, and even then it's 'auto' rather than a hard "show
+// everything": there's a lot more room in fullscreen so most points end up
+// fitting on their own, but the plugin still hides whichever ones would
+// overlap rather than forcing every single one on regardless of fit.
+// Doughnut/pie shares are excluded entirely: they already communicate their
+// values via the legend + tooltip and have no room on thin slices.
+// ═══════════════════════════════════════════════════
+Chart.register(ChartDataLabels);
+function isChartFullscreen(chart){
+  const canvas=chart&&chart.canvas;
+  const card=canvas&&canvas.closest('.card');
+  return !!(card&&card.classList.contains('chart-fullscreen-active'));
+}
+function dlNumber(v){
+  if(v==null||typeof v!=='number'||isNaN(v))return'';
+  const abs=Math.abs(v);
+  if(abs>=1e6)return(v/1e6).toFixed(2)+'M';
+  if(abs>=1e3)return(v/1e3).toFixed(2)+'K';
+  return Number.isInteger(v)?v.toLocaleString('en-US'):v.toFixed(2);
+}
+// Colors a label to match the line/bar it belongs to, using that dataset's own
+// borderColor (lines) or backgroundColor (bars) — so e.g. an orange dashed
+// "Reference" line gets orange labels, a blue "Current" line gets blue labels.
+// Bar fills here are often a translucent rgba(...) so they read as a soft tint
+// against the white card background; that alpha would make the label text look
+// washed out, so it's stripped to full opacity for the text color only (the bar
+// itself keeps its original translucency).
+function dlColor(ctx){
+  const ds=ctx.dataset||{};
+  let c=ds.borderColor!=null?ds.borderColor:ds.backgroundColor;
+  if(Array.isArray(c))c=c[ctx.dataIndex];
+  if(typeof c!=='string'||!c)return'#334155';
+  const m=c.match(/^rgba?\(([^)]+)\)$/i);
+  if(m){
+    const parts=m[1].split(',').map(s=>s.trim());
+    return'rgb('+parts[0]+','+parts[1]+','+parts[2]+')';
+  }
+  return c;
+}
+// A little headroom above the highest point on every linear axis, so a
+// label on the tallest bar/point always has somewhere to draw without
+// needing to spill above the plot area into the legend/title strip.
+Chart.defaults.set('scales.linear',{grace:'8%'});
+// Dynamic top padding: instead of a single fixed pixel value (too small for a
+// big badge label, wasted space for a chart with no labels at all), this plugin
+// looks at each chart's ACTUAL datalabels config (font size, offset, padding)
+// right before every layout pass — including fullscreen resize — and works out
+// how much clear space a label that anchors above its point/bar would actually
+// need, then sets that as this chart's own layout.padding.top. A chart with no
+// labels above the plot area gets the small baseline; a chart with a big bold
+// badge (e.g. the efficiency-comparison total) automatically gets more room.
+const dlAutoPad={
+  id:'dlAutoPad',
+  beforeLayout(chart){
+    const dl=(chart.options.plugins&&chart.options.plugins.datalabels)||{};
+    let maxTop=6;
+    (chart.data.datasets||[]).forEach((ds,dsIndex)=>{
+      const dsDl=Object.assign({},dl,ds.datalabels||{});
+      if(dsDl.display===false)return;
+      const stubCtx={chart,dataset:ds,datasetIndex:dsIndex,dataIndex:0};
+      const resolve=(v)=>{try{return typeof v==='function'?v(stubCtx):v;}catch(e){return v;}};
+      const align=resolve(dsDl.align)||'center';
+      const anchor=resolve(dsDl.anchor)||'center';
+      // Only labels that can actually sit above their point/bar need headroom:
+      // align 'top'/'start', or an 'end'-anchored label aligned 'end' (badges).
+      const goesAbove=align==='top'||align==='start'||(align==='end'&&anchor==='end');
+      if(!goesAbove)return;
+      const fontOpt=resolve(dsDl.font)||{};
+      const font=fontOpt.size||9;
+      const offset=resolve(dsDl.offset);
+      const off=typeof offset==='number'?offset:3;
+      const pad=resolve(dsDl.padding)||{};
+      const padV=(pad.top||0)+(pad.bottom||0);
+      const needed=Math.ceil(font*1.5)+off+padV+6;
+      if(needed>maxTop)maxTop=needed;
+    });
+    if(!chart.options.layout)chart.options.layout={};
+    if(!chart.options.layout.padding||typeof chart.options.layout.padding!=='object')chart.options.layout.padding={};
+    chart.options.layout.padding.top=maxTop;
+  }
+};
+Chart.register(dlAutoPad);
+Chart.defaults.set('plugins.datalabels',{
+  display:(ctx)=>isChartFullscreen(ctx.chart)?'auto':false,
+  color:dlColor,
+  font:{size:9,weight:'600'},
+  anchor:'end',
+  align:(ctx)=>ctx.chart.options.indexAxis==='y'?'right':'top',
+  offset:3,
+  clamp:true,
+  // Never draw past the chart's own plot area — a label on the very top/tallest
+  // point must not be able to spill upward into the legend or title above it.
+  clip:true,
+  formatter:(value)=>{
+    if(value==null)return'';
+    if(typeof value==='object')return dlNumber('y'in value?value.y:('r'in value?value.r:null));
+    return dlNumber(value);
+  }
+});
+// Share/breakdown doughnuts already show their values via legend + tooltip —
+// no room for extra labels on thin slices, so keep them off entirely.
+Chart.overrides.doughnut.plugins.datalabels={display:false};
+Chart.overrides.pie.plugins.datalabels={display:false};
 let selectedFacilityType = 'hotel';
+let globalComparePeriod = ''; // '' = auto (chronologically-previous month)
 const pendingFiles = [];
 const CLIENT_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
 // Occupancy-style metric relabeling per site type — mirrors the Power BI bookmark system
@@ -1646,15 +1813,22 @@ function addFile(file,client){
   if(pendingFiles.find(p=>p.file.name===file.name&&p.client===client))return;
   pendingFiles.push({file,client});
 }
+// Removes one queued file (by its position in pendingFiles) before the user hits
+// "Show Dashboard" — e.g. they dropped the wrong file or a duplicate/older export
+// of the same period and want to drop it without starting the whole selection over.
+function removePendingFile(idx){
+  pendingFiles.splice(idx,1);
+  updateUI();
+}
 function updateUI(){
   const ss=document.getElementById('scan-status');
   ss.style.display='block';
   ss.innerHTML=`<span style="color:var(--accent);font-weight:700">${pendingFiles.length}</span> file(s)`;
   const fl=document.getElementById('file-list');fl.innerHTML='';
-  pendingFiles.forEach(({file,client})=>{
+  pendingFiles.forEach(({file,client},idx)=>{
     const color=clientColor(client);
     const el=document.createElement('div');el.className='file-item';
-    el.innerHTML=`<div class="file-item-left"><div class="client-dot" style="background:${color}"></div><div><div style="font-weight:500">${file.name}</div><div style="color:var(--muted);font-size:10px">👤 ${client}</div></div></div><span style="color:var(--good);font-size:11px">✓</span>`;
+    el.innerHTML=`<div class="file-item-left"><div class="client-dot" style="background:${color}"></div><div><div style="font-weight:500">${file.name}</div><div style="color:var(--muted);font-size:10px">👤 ${client}</div></div></div><div style="display:flex;align-items:center;gap:10px"><span style="color:var(--good);font-size:11px">✓</span><button type="button" class="file-remove-btn" title="Remove this file" onclick="removePendingFile(${idx})">✕</button></div>`;
     fl.appendChild(el);
   });
   document.getElementById('load-btn').style.display=pendingFiles.length?'inline-flex':'none';
@@ -1707,6 +1881,15 @@ function fmt4(n){
 function fmtBig(n){
   if(n==null||isNaN(n))return'—';
   return Math.round(n).toLocaleString('en-US');
+}
+// Abbreviates large numbers so they don't overflow a KPI card (e.g. 4,583,660 -> "4.58M").
+// Only kicks in above 1,000,000 — smaller numbers keep their normal comma-separated form,
+// since those already fit fine.
+function fmtCompact(n,dec=2){
+  if(n==null||isNaN(n))return'—';
+  const abs=Math.abs(n);
+  if(abs>=1e6)return(n/1e6).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec})+'M';
+  return fmtNum(n,dec);
 }
 function period(s){const d=serial2date(s);if(!d)return null;const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');return y+'-'+m}
 function periodLabel(p){if(!p||p==='—')return p;const[y,mo]=p.split('-');const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return(mn[parseInt(mo,10)-1]||mo)+' '+y}
@@ -1853,7 +2036,7 @@ async function parseFile(file,client){
           }
         }
         // CHWP/CWP/CT part-load — dynamic: detect CHWP 1, CHWP 2, CWP 1, CT 1...
-        const parsePartLoadSheet=(s)=>{if(!s)return[];const d=XLSX.utils.sheet_to_json(s,{header:1,defval:null,raw:true});return d.slice(1).filter(r=>r[0]).map(r=>({partLoad:+r[0]||0,occurrence:+r[2]||0,eff:+r[6]||0}));};
+        const parsePartLoadSheet=(s)=>{if(!s)return[];const d=XLSX.utils.sheet_to_json(s,{header:1,defval:null,raw:true});return d.slice(1).filter(r=>r[0]).map(r=>({partLoad:+r[0]||0,coolingLoad:+r[1]||0,occurrence:+r[2]||0,eff:+r[6]||0}));};
         // Collect all sheets matching CHWP N / CWP N / CT N (with or without number)
         const chwpSheets={},cwpSheets={},ctSheets={};
         for(const sn of wb.SheetNames){
@@ -2191,6 +2374,7 @@ function filterDashboard(){
 }
 
 function renderCurrentPage(){
+  closeChartFullscreen();
   if(currentPage==='home')return;
   if(currentPage==='monthly')renderMonthly();
   else if(currentPage==='yearly')renderYearly();
@@ -2204,6 +2388,7 @@ function renderCurrentPage(){
   else if(currentPage==='weekly')renderWeeklyTrend();
   else if(currentPage==='trending')renderTrending();
   else if(currentPage==='raw')renderRaw();
+  enhanceChartCards();
 }
 
 // ═══════════════════════════════════════════════════
@@ -2262,11 +2447,11 @@ function renderMonthly(){
   const s=computeMonthlyStats(filteredData);
 
   document.getElementById('kpi-monthly').innerHTML=`
-    <div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">${fmt4(s.totalCooling)}</div><div class="kpi-unit">TRh</div></div>
-    <div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">${fmt4(s.totalPlant)}</div><div class="kpi-unit">kWh</div></div>
-    <div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">${fmt4(s.elecSavings)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">${fmtCompact(s.totalCooling)}</div><div class="kpi-unit">TRh</div></div>
+    <div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">${fmtCompact(s.totalPlant)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">${fmtCompact(s.elecSavings)}</div><div class="kpi-unit">kWh</div></div>
     <div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">${fmt4(s.co2)}</div><div class="kpi-unit">Tons of CO₂e</div></div>
-    <div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">${fmtNum(s.trees)}</div><div class="kpi-unit">Trees 🌳</div></div>
+    <div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">${fmtCompact(s.trees,0)}</div><div class="kpi-unit">Trees 🌳</div></div>
     <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmt4(s.metrics.oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
     <div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">${fmt4(s.avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
   `;
@@ -2277,7 +2462,7 @@ function renderMonthly(){
     hotelEl.style.display='flex';
     hotelEl.innerHTML=`
       <div class="kpi"><div class="kpi-label">${ft.metricLabel}</div><div class="kpi-value">${fmtNum(s.metrics.rns)}</div><div class="kpi-unit">${ft.metricAbbr} / ${ft.maxLabel} ${fmtNum(s.metrics.maxRns)}</div></div>
-      <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmt4(s.metrics.totalElec)}</div><div class="kpi-unit">kWh</div></div>
+      <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmtCompact(s.metrics.totalElec)}</div><div class="kpi-unit">kWh</div></div>
       <div class="kpi"><div class="kpi-label">Cooling / ${ft.metricAbbr}</div><div class="kpi-value">${fmt4(s.coolingPerRoom)}</div><div class="kpi-unit">TRh/${ft.metricAbbr}</div></div>
       <div class="kpi"><div class="kpi-label">Energy / ${ft.metricAbbr}</div><div class="kpi-value">${fmt4(s.energyPerRoom)}</div><div class="kpi-unit">kWh/${ft.metricAbbr}</div></div>
     `;
@@ -2387,8 +2572,8 @@ function renderYearly(){
     <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmt4(s.oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
     <div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">${fmt4(s.avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
     <div class="kpi"><div class="kpi-label">Avg Saving</div><div class="kpi-value green">${s.avgSavingsPct} %</div><div class="kpi-unit">vs old system</div></div>
-    <div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">${fmt4(s.totCooling)}</div><div class="kpi-unit">TRh</div></div>
-    <div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">${fmt4(s.totElecSavings)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">${fmtCompact(s.totCooling)}</div><div class="kpi-unit">TRh</div></div>
+    <div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">${fmtCompact(s.totElecSavings)}</div><div class="kpi-unit">kWh</div></div>
     <div class="kpi"><div class="kpi-label">Total Carbon Savings</div><div class="kpi-value green">${fmt4(s.co2)}</div><div class="kpi-unit">Tons CO₂e</div></div>
   `;
 
@@ -2467,8 +2652,10 @@ function renderDetailed(){
   const _cm=selectedMonths.length===1?selectedMonths[0]:null;
   const thisIdx=_cm?allPeriods.indexOf(_cm):allPeriods.length-1;
   const thisPeriod=allPeriods[thisIdx];
-  const lastPeriod=allPeriods[thisIdx-1]||null;
+  const autoLastPeriod=allPeriods[thisIdx-1]||null;
+  const lastPeriod=(globalComparePeriod&&allPeriods.includes(globalComparePeriod))?globalComparePeriod:autoLastPeriod;
   const last2Period=allPeriods[thisIdx-2]||null;
+  populateCompareToSelector(thisPeriod);
 
   // Aliases used further down
   const thisPer=thisPeriod;
@@ -2488,24 +2675,77 @@ function renderDetailed(){
   };
   const getForPeriod=(period,key)=>allData.filter(d=>(!client||d.client===client)&&d.period===period).flatMap(d=>d[key]);
 
-  // ── Efficiency comparison chart — per component + Total ──────────────
+  // ── Efficiency comparison chart — one stacked column per period, segmented
+  // by component (Chiller/CHWP/CWP/CT/Aux), with each segment's own value
+  // labeled inside it and the period's total shown as a badge above the bar. ──
   destroyChart('eff-compare');
-  const datasets=[];
+  const stackColors=['#0a3d7c','#7dd3fc','#3b82f6','#2d8a4e','#94a3b8'];
+  const fmtEff=v=>(v==null||isNaN(v))?'':v.toFixed(2);
+  const effPeriodLabels=[];
+  const perComponent=keys.map(()=>[]);
+  const effTotals=[];
   if(p1data.length){
     const v1=effBreakdownTotal(p1data);
-    const total1=v1.reduce((s,v)=>s+v,0);
-    datasets.push({label:periodLabel(lastPeriod)||lastPeriod,data:[...v1,total1],backgroundColor:'rgba(100,116,139,.5)',borderRadius:4});
+    effPeriodLabels.push(periodLabel(lastPeriod)||lastPeriod);
+    keys.forEach((k,i)=>perComponent[i].push(v1[i]));
+    effTotals.push(v1.reduce((s,v)=>s+v,0));
   }
   if(p2data.length){
     const v2=effBreakdownTotal(p2data);
-    const total2=v2.reduce((s,v)=>s+v,0);
-    datasets.push({label:periodLabel(thisPeriod)||thisPeriod,data:[...v2,total2],backgroundColor:'rgba(10,61,124,.75)',borderRadius:4});
+    effPeriodLabels.push(periodLabel(thisPeriod)||thisPeriod);
+    keys.forEach((k,i)=>perComponent[i].push(v2[i]));
+    effTotals.push(v2.reduce((s,v)=>s+v,0));
   }
-  if(datasets.length){
+  if(effPeriodLabels.length){
+    const effDatasets=keys.map((k,i)=>({
+      label:keyLabels[i],
+      data:perComponent[i],
+      backgroundColor:stackColors[i],
+      stack:'eff',
+      datalabels:{
+        anchor:'center',align:'center',color:'#fff',
+        font:{size:9,weight:'700'},
+        textStrokeColor:'rgba(0,0,0,.35)',textStrokeWidth:2,
+        formatter:v=>v>0.005?keyLabels[i]+' '+fmtEff(v):'',
+        // Deliberately NOT 'auto' here: with several segments centered right next to
+        // each other in a stack, 'auto' treats adjacent-but-non-overlapping labels
+        // (e.g. CWP squeezed between CHWP and CT) as colliding and drops one — even
+        // though each sits cleanly inside its own segment. The value threshold below
+        // is the only gate that matters: hide the tiny slivers (e.g. Aux), show
+        // everything else unconditionally.
+        display:(ctx)=>ctx.dataset.data[ctx.dataIndex]>0.005,
+      }
+    }));
+    // Zero-height marker dataset stacked on top of each bar, purely so its
+    // anchor sits exactly at the bar's total height — used to draw the
+    // rounded "total" badge above each column, like the reference report.
+    effDatasets.push({
+      label:'Total',data:effTotals.map(()=>0),stack:'eff',backgroundColor:'transparent',
+      datalabels:{
+        anchor:'end',align:'end',offset:6,
+        color:'#fff',backgroundColor:'#334155',borderRadius:4,
+        padding:{top:3,bottom:3,left:7,right:7},
+        font:{size:11,weight:'800'},
+        formatter:(v,ctx)=>fmtEff(effTotals[ctx.dataIndex]),
+        display:true,
+      }
+    });
+    // The "Total" badge floats above each bar (anchor:'end' + offset on the zero-height
+    // marker dataset) — the default 6% axis grace isn't always enough room for its
+    // rounded background + text, so give the y-axis an explicit ceiling well above the
+    // tallest total instead of relying on Chart.js' auto-scaled max.
+    const maxEffTotal=Math.max(...effTotals,0);
     charts['eff-compare']=new Chart(document.getElementById('chart-eff-compare').getContext('2d'),{
       type:'bar',
-      data:{labels:[...keyLabels,'Total'],datasets},
-      options:{...chartOpts({y:'kW/TR'}),indexAxis:'y'}
+      data:{labels:effPeriodLabels,datasets:effDatasets},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        scales:{
+          x:{stacked:true,ticks:{color:'#64748b',font:{size:11}},grid:{display:false}},
+          y:{stacked:true,suggestedMax:maxEffTotal*1.22,title:{display:true,text:'Efficiency (kW/TR)',color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(209,217,230,.8)'}}
+        },
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Total'?'':c.dataset.label+': '+fmtEff(c.raw)+' kW/TR'}}}
+      }
     });
   }
 
@@ -2612,6 +2852,7 @@ function renderDetailed(){
 // MAIN CH PAGE — Dynamic chillers
 // ═══════════════════════════════════════════════════
 function renderMainCH(){
+  closeChartFullscreen();
   const client='';
   const year=document.getElementById('sel-year').value;
   const selectedMonths=getSelectedMonths();
@@ -2619,8 +2860,10 @@ function renderMainCH(){
   const _cm=selectedMonths.length===1?selectedMonths[0]:null;
   const thisIdx=_cm?allPeriodsBase.indexOf(_cm):allPeriodsBase.length-1;
   const thisPer=allPeriodsBase[thisIdx];
-  const lastPer=allPeriodsBase[thisIdx-1]||null;
+  const autoLastPer=allPeriodsBase[thisIdx-1]||null;
+  const lastPer=(globalComparePeriod&&allPeriodsBase.includes(globalComparePeriod))?globalComparePeriod:autoLastPer;
   const last2Per=allPeriodsBase[thisIdx-2]||null;
+  populateCompareToSelector(thisPer);
   const getData=(period,key)=>allData.filter(d=>(!client||d.client===client)&&d.period===period).flatMap(d=>d[key]||[]);
   // Collect all chiller names dynamically
   const thisData=allData.filter(d=>(!client||d.client===client)&&d.period===thisPer);
@@ -2728,6 +2971,35 @@ function renderMainCH(){
 }
 
 // ═══════════════════════════════════════════════════
+// Shared helpers for the "metric vs Part-Load" charts (CHWP/CWP/CT Detailed
+// pages): the CHWP/CWP/CT Excel sheets only carry Efficiency per part-load
+// bin, not Flow or Approach — those live as per-minute Raw Data columns
+// (Evaporator/Condenser Flow, Approach). So Flow/Approach-vs-Part-Load is
+// computed the same way Excel computes Efficiency-vs-Part-Load: bucket Raw
+// Data rows by their cooling load (the "Total (TR)" column, exposed here as
+// row.cooling) against the equipment's own design capacity, then average the
+// desired field within each bucket. Design capacity isn't a value we parse
+// directly — it's recovered from the part-load table itself: at the 100%
+// bin (partLoad===1), coolingLoad = 1 × capacity, i.e. equals capacity.
+function findDesignCapacity(sheets){
+  for(const arr of (sheets||[])){
+    const r=(arr||[]).find(x=>Math.abs(x.partLoad-1)<0.01);
+    if(r&&r.coolingLoad>0)return r.coolingLoad;
+  }
+  return null;
+}
+function binRawByPartLoad(rows,capacity,field,partLoads){
+  if(!capacity||!partLoads.length)return partLoads.map(()=>null);
+  const cutoffs=partLoads.map(p=>p*capacity);
+  return cutoffs.map((cutoff,i)=>{
+    const lo=i===0?-Infinity:cutoffs[i-1];
+    const vals=rows.filter(r=>{const v=r.cooling;return v!=null&&v<=cutoff&&v>lo;}).map(r=>r[field]).filter(v=>v!=null&&Number.isFinite(v));
+    if(!vals.length)return null;
+    return vals.reduce((s,v)=>s+v,0)/vals.length;
+  });
+}
+
+// ═══════════════════════════════════════════════════
 // CHWP PAGE
 // ═══════════════════════════════════════════════════
 function renderCHWP(){
@@ -2773,6 +3045,38 @@ function renderCHWP(){
     ];
     if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
     charts['chwp-pl']=new Chart(document.getElementById('chart-chwp-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
+  }
+  // Evaporator Flow / Approach vs Part-Load — same Occurrence bins as the
+  // efficiency chart above, but the line is averaged from Raw Data (see
+  // binRawByPartLoad) since flow/approach aren't in the CHWP sheet itself.
+  {
+    const capSheets=selectedCHWP
+      ? thisPeriodData.map(d=>(d.chwpSheets||{})[selectedCHWP]).filter(Boolean)
+      : thisPeriodData.flatMap(d=>Object.values(d.chwpSheets||{}));
+    const capacity=findDesignCapacity(capSheets);
+    const rawThis=allData.filter(d=>d.period===thisPer).flatMap(d=>d.rawData||[]);
+    const rawLast=lastPer?allData.filter(d=>d.period===lastPer).flatMap(d=>d.rawData||[]):[];
+    const partLoads=pl.map(p=>p.partLoad);
+    const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
+    const occDs={label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(6,182,212,.25)',borderRadius:3,yAxisID:'y'};
+
+    destroyChart('chwp-pl-flow');
+    if(pl.length&&capacity){
+      const flowCur=binRawByPartLoad(rawThis,capacity,'evapFlow',partLoads);
+      const flowLast=lastPer?binRawByPartLoad(rawLast,capacity,'evapFlow',partLoads):[];
+      const ds=[occDs,{label:`Evaporator Flow (LPS)${titleSuffix}`,data:flowCur.map(v=>v==null?null:+v.toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:true}];
+      if(flowLast.some(v=>v!=null)) ds.push({label:'Evaporator Flow Last Month',data:flowLast.map(v=>v==null?null:+v.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:true});
+      charts['chwp-pl-flow']=new Chart(document.getElementById('chart-chwp-pl-flow').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'LPS',y2right:true})});
+    }
+
+    destroyChart('chwp-pl-approach');
+    if(pl.length&&capacity){
+      const appCur=binRawByPartLoad(rawThis,capacity,'evapApproach',partLoads);
+      const appLast=lastPer?binRawByPartLoad(rawLast,capacity,'evapApproach',partLoads):[];
+      const ds=[occDs,{label:`Evaporator Approach (°C)${titleSuffix}`,data:appCur.map(v=>v==null?null:+v.toFixed(2)),type:'line',borderColor:'#8b5cf6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:true}];
+      if(appLast.some(v=>v!=null)) ds.push({label:'Approach Last Month',data:appLast.map(v=>v==null?null:+v.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:true});
+      charts['chwp-pl-approach']=new Chart(document.getElementById('chart-chwp-pl-approach').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'°C',y2right:true})});
+    }
   }
   // CHW Flow weekly
   destroyChart('chwp-flow');
@@ -2867,14 +3171,36 @@ function renderCWP(){
       options:chartOpts({y:'°C'})
     });
   }
-  destroyChart('cwp-pl-flow');
-  if(pl.length){
+  // Condenser Flow / Approach vs Part-Load — same pattern as CHWP: Occurrence
+  // bins from the CWP sheet, Flow/Approach line averaged from Raw Data.
+  {
+    const capSheets=selectedCWP
+      ? thisPeriodData.map(d=>(d.cwpSheets||{})[selectedCWP]).filter(Boolean)
+      : thisPeriodData.flatMap(d=>Object.values(d.cwpSheets||{}));
+    const capacity=findDesignCapacity(capSheets);
+    const rawThis=allData.filter(d=>d.period===thisPer).flatMap(d=>d.rawData||[]);
+    const rawLast=lastPer?allData.filter(d=>d.period===lastPer).flatMap(d=>d.rawData||[]):[];
+    const partLoads=pl.map(p=>p.partLoad);
     const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
-    charts['cwp-pl-flow']=new Chart(document.getElementById('chart-cwp-pl-flow').getContext('2d'),{
-      type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),
-        datasets:[{label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(16,185,129,.3)',borderRadius:3}]},
-      options:chartOpts({y:'Occurrence %'})
-    });
+    const occDs={label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(16,185,129,.25)',borderRadius:3,yAxisID:'y'};
+
+    destroyChart('cwp-pl-flow');
+    if(pl.length&&capacity){
+      const flowCur=binRawByPartLoad(rawThis,capacity,'condFlow',partLoads);
+      const flowLast=lastPer?binRawByPartLoad(rawLast,capacity,'condFlow',partLoads):[];
+      const ds=[occDs,{label:`Condenser Flow (LPS)${titleSuffix}`,data:flowCur.map(v=>v==null?null:+v.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:true}];
+      if(flowLast.some(v=>v!=null)) ds.push({label:'Condenser Flow Last Month',data:flowLast.map(v=>v==null?null:+v.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:true});
+      charts['cwp-pl-flow']=new Chart(document.getElementById('chart-cwp-pl-flow').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'LPS',y2right:true})});
+    }
+
+    destroyChart('cwp-pl-approach');
+    if(pl.length&&capacity){
+      const appCur=binRawByPartLoad(rawThis,capacity,'condApproach',partLoads);
+      const appLast=lastPer?binRawByPartLoad(rawLast,capacity,'condApproach',partLoads):[];
+      const ds=[occDs,{label:`Condenser Approach (°C)${titleSuffix}`,data:appCur.map(v=>v==null?null:+v.toFixed(2)),type:'line',borderColor:'#f97316',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:true}];
+      if(appLast.some(v=>v!=null)) ds.push({label:'Approach Last Month',data:appLast.map(v=>v==null?null:+v.toFixed(2)),type:'line',borderColor:'rgba(245,158,11,.5)',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:true});
+      charts['cwp-pl-approach']=new Chart(document.getElementById('chart-cwp-pl-approach').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'°C',y2right:true})});
+    }
   }
 }
 
@@ -2951,6 +3277,13 @@ function renderCT(){
       options:chartOpts({y:'COC'})
     });
   }
+  destroyChart('ct-makeup');
+  if(weekly.length){
+    charts['ct-makeup']=new Chart(document.getElementById('chart-ct-makeup').getContext('2d'),{
+      type:'bar',data:{labels:xlabels,datasets:[{label:'Condenser Makeup Water (m³)',data:weekly.map(w=>+(w.makeupWater||0).toFixed(2)),backgroundColor:'rgba(59,130,246,.6)',borderRadius:3}]},
+      options:chartOpts({y:'m³'})
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -3006,21 +3339,9 @@ function computeGroupFrequencyBuckets(rows,groupsKey,groupId){
 }
 
 function renderPumpHealth(){
-  const{thisPer,lastPer:autoLastPer}=getPeriodHelpers();
-
-  // "Compare to" selector — lets the user pick ANY month as the comparison baseline instead
-  // of always the chronologically-previous one. Populated from every period available for
-  // this client except whichever month is currently selected as "current".
-  const allPeriods=[...new Set(allData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
-  const compareOptions=allPeriods.filter(p=>p!==thisPer);
-  const selCompare=document.getElementById('sel-pumphealth-compare');
-  if(selCompare){
-    const prev=selCompare.value;
-    selCompare.innerHTML='<option value="">Previous month (default)</option>'+
-      compareOptions.map(p=>`<option value="${p}">${periodLabel(p)||p}</option>`).join('');
-    if(compareOptions.includes(prev))selCompare.value=prev;
-  }
-  const lastPer=(selCompare&&selCompare.value)?selCompare.value:autoLastPer;
+  // "Compare to" is now a single global selector in the main filters bar (applies to
+  // every page) — getPeriodHelpers() already resolves it.
+  const{thisPer,lastPer}=getPeriodHelpers();
 
   const rawFor=period=>period?allData.filter(d=>d.period===period).flatMap(d=>d.rawData||[]):[];
   const thisRaw=rawFor(thisPer);
@@ -3966,10 +4287,34 @@ function getPeriodHelpers(){
   const _cm=selectedMonths.length===1?selectedMonths[0]:null;
   const thisIdx=_cm?allPers.indexOf(_cm):allPers.length-1;
   const thisPer=allPers[thisIdx];
-  const lastPer=allPers[thisIdx-1]||null;
+  const autoLastPer=allPers[thisIdx-1]||null;
+  // Global "Compare to" selector (top filters bar) overrides the default chronologically-
+  // previous month when the user has picked a specific month — applies everywhere this
+  // helper is used (CHWP/CWP/CT, Pump Health). Only used if that period actually has data.
+  const lastPer=(globalComparePeriod&&allPers.includes(globalComparePeriod))?globalComparePeriod:autoLastPer;
   const last2Per=allPers[thisIdx-2]||null;
   const getData=(period,key)=>allData.filter(d=>(!client||d.client===client)&&d.period===period).flatMap(d=>d[key]||[]);
-  return{thisPer,lastPer,last2Per,getData,client};
+  populateCompareToSelector(thisPer);
+  return{thisPer,lastPer,last2Per,getData,client,allPers};
+}
+
+// Populates the global "Compare to" dropdown with every period available (excluding
+// whichever month is currently selected as "current"), and re-renders on change.
+function populateCompareToSelector(thisPer){
+  const sel=document.getElementById('sel-compare-to');
+  if(!sel)return;
+  const allPers=[...new Set(allData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
+  const options=allPers.filter(p=>p!==thisPer);
+  const prev=sel.value;
+  sel.innerHTML='<option value="">Previous month (default)</option>'+
+    options.map(p=>`<option value="${p}">${periodLabel(p)||p}</option>`).join('');
+  if(options.includes(prev))sel.value=prev;
+  else if(!options.includes(globalComparePeriod))globalComparePeriod='';
+}
+function onCompareToChange(){
+  const sel=document.getElementById('sel-compare-to');
+  globalComparePeriod=sel?sel.value:'';
+  renderCurrentPage();
 }
 
 function getWeeklyForFilter(){
@@ -4021,14 +4366,84 @@ function chartOpts({y='',y2='',y2right=false}={}){
       y:{title:{display:!!y,text:y,color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(209,217,230,.8)'}}
     }
   };
-  if(y2right)base.scales.y2={position:'right',title:{display:!!y2,text:y2,color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{drawOnChartArea:false}};
+  if(y2right){
+    base.scales.y2={position:'right',beginAtZero:false,title:{display:!!y2,text:y2,color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{drawOnChartArea:false}};
+  }
   return base;
 }
+
+// ═══════════════════════════════════════════════════
+// CHART CARD ENHANCEMENTS — fullscreen expand
+// Rewritten a second time: the first rewrite moved the live <canvas> into a
+// separate modal and back, which "worked" but left the page's CSS grid in a
+// broken state after closing (an empty grid column briefly collapses its
+// intrinsic size while the canvas is away, and the sibling column doesn't
+// reliably recompute back to its normal 1fr/1fr share once the canvas returns).
+// This version never moves anything: the card's own <canvas> and its Chart.js
+// instance stay exactly where they are in the DOM at all times. "Fullscreen" is
+// just a CSS class (.chart-fullscreen-active) toggled on the card itself, which
+// switches it to position:fixed, centered and enlarged, with a backdrop behind
+// it. Since the card never leaves its grid cell, the grid is never disturbed.
+// ═══════════════════════════════════════════════════
+let expandedCard=null; // the .card element currently shown fullscreen, or null
+
+function enhanceChartCards(){
+  document.querySelectorAll('.page.active .card').forEach(card=>{
+    const canvas=card.querySelector('canvas[id^="chart-"]');
+    const head=card.querySelector('.card-head');
+    if(!canvas||!head||head.querySelector('.expand-btn'))return; // no chart, or already enhanced
+    const btn=document.createElement('button');
+    btn.className='expand-btn';
+    btn.title='Expand chart';
+    btn.textContent='⛶';
+    btn.onclick=e=>{
+      e.stopPropagation();
+      if(card.classList.contains('chart-fullscreen-active')) closeChartFullscreen();
+      else openChartFullscreen(card);
+    };
+    head.appendChild(btn);
+  });
+}
+
+function openChartFullscreen(card){
+  if(expandedCard && expandedCard!==card) closeChartFullscreen();
+  const canvas=card.querySelector('canvas[id^="chart-"]');
+  const chart=canvas?Chart.getChart(canvas):null;
+  document.getElementById('chart-fullscreen-backdrop').classList.add('show');
+  card.classList.add('chart-fullscreen-active');
+  const btn=card.querySelector('.expand-btn');
+  if(btn){btn.textContent='✕';btn.title='Collapse chart';}
+  expandedCard=card;
+  // Wait for the CSS position/size change to actually take effect before telling Chart.js to
+  // resize into the new box — resizing in the same tick would measure the pre-change size.
+  // Two nested rAFs reliably wait past one full layout/paint cycle.
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    // resize() remeasures the canvas box; update() re-resolves per-context plugin
+    // options (like datalabels' fullscreen-aware `display`) against the new state.
+    if(chart){ try{ chart.resize(); chart.update(); }catch(err){ console.error('Fullscreen chart resize failed:',err); } }
+  }));
+}
+function closeChartFullscreen(){
+  if(!expandedCard)return;
+  const card=expandedCard;
+  expandedCard=null;
+  const canvas=card.querySelector('canvas[id^="chart-"]');
+  const chart=canvas?Chart.getChart(canvas):null;
+  card.classList.remove('chart-fullscreen-active');
+  const btn=card.querySelector('.expand-btn');
+  if(btn){btn.textContent='⛶';btn.title='Expand chart';}
+  document.getElementById('chart-fullscreen-backdrop').classList.remove('show');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(chart){ try{ chart.resize(); chart.update(); }catch(err){} }
+  }));
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeChartFullscreen();});
 
 function showLoader(v,txt=''){document.getElementById('loader').className=v?'show':'';if(txt)document.getElementById('loader-text').textContent=txt}
 function setProgress(pct,txt){document.getElementById('progress-fill').style.width=pct+'%';if(txt)document.getElementById('loader-text').textContent=txt}
 
 function resetDashboard(){
+  closeChartFullscreen();
   document.getElementById('dashboard').style.display='none';
   document.getElementById('page-tabs').style.display='none';
   document.getElementById('drop-zone').style.display='flex';
@@ -4079,6 +4494,7 @@ function exportClientView(){
 <meta name="robots" content="noindex, nofollow">
 <title>CPPR — ${clientName}</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"><\/script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -4137,6 +4553,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 
 /* CHART CARDS */
 .chart-grid{display:grid;gap:16px}
+.chart-grid>*{min-width:0}
 .grid-2{grid-template-columns:1fr 1fr}
 .grid-1-2{grid-template-columns:1fr 2fr}
 @media(max-width:900px){.grid-2,.grid-1-2{grid-template-columns:1fr}}
@@ -4929,6 +5346,70 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
 let allData=${dataJson};
 let filteredData=[...allData];
 const charts={};
+// Data labels: the client report has no fullscreen expand feature at all, so —
+// matching the main dashboard's "only show when displayed large" rule — labels
+// stay off here entirely.
+Chart.register(ChartDataLabels);
+Chart.defaults.set('scales.linear',{grace:'8%'});
+// Dynamic top padding — see the main dashboard's dlAutoPad for the full
+// rationale: computes the actual headroom a given chart's labels need (font
+// size, offset, padding) instead of one fixed guess, so a chart with a big
+// badge label gets more room than a chart with none.
+const dlAutoPad={
+  id:'dlAutoPad',
+  beforeLayout(chart){
+    const dl=(chart.options.plugins&&chart.options.plugins.datalabels)||{};
+    let maxTop=6;
+    (chart.data.datasets||[]).forEach((ds,dsIndex)=>{
+      const dsDl=Object.assign({},dl,ds.datalabels||{});
+      if(dsDl.display===false)return;
+      const stubCtx={chart,dataset:ds,datasetIndex:dsIndex,dataIndex:0};
+      const resolve=(v)=>{try{return typeof v==='function'?v(stubCtx):v;}catch(e){return v;}};
+      const align=resolve(dsDl.align)||'center';
+      const anchor=resolve(dsDl.anchor)||'center';
+      const goesAbove=align==='top'||align==='start'||(align==='end'&&anchor==='end');
+      if(!goesAbove)return;
+      const fontOpt=resolve(dsDl.font)||{};
+      const font=fontOpt.size||9;
+      const offset=resolve(dsDl.offset);
+      const off=typeof offset==='number'?offset:3;
+      const pad=resolve(dsDl.padding)||{};
+      const padV=(pad.top||0)+(pad.bottom||0);
+      const needed=Math.ceil(font*1.5)+off+padV+6;
+      if(needed>maxTop)maxTop=needed;
+    });
+    if(!chart.options.layout)chart.options.layout={};
+    if(!chart.options.layout.padding||typeof chart.options.layout.padding!=='object')chart.options.layout.padding={};
+    chart.options.layout.padding.top=maxTop;
+  }
+};
+Chart.register(dlAutoPad);
+function dlColor(ctx){
+  const ds=ctx.dataset||{};
+  let c=ds.borderColor!=null?ds.borderColor:ds.backgroundColor;
+  if(Array.isArray(c))c=c[ctx.dataIndex];
+  if(typeof c!=='string'||!c)return'#334155';
+  const m=c.match(/^rgba?\(([^)]+)\)$/i);
+  if(m){
+    const parts=m[1].split(',').map(s=>s.trim());
+    return'rgb('+parts[0]+','+parts[1]+','+parts[2]+')';
+  }
+  return c;
+}
+Chart.defaults.set('plugins.datalabels',{
+  display:false,color:dlColor,font:{size:9,weight:'600'},anchor:'end',
+  align:(ctx)=>ctx.chart.options.indexAxis==='y'?'right':'top',
+  offset:3,clamp:true,clip:true,
+  formatter:(value)=>{
+    if(value==null||typeof value!=='number'||isNaN(value))return'';
+    const abs=Math.abs(value);
+    if(abs>=1e6)return(value/1e6).toFixed(2)+'M';
+    if(abs>=1e3)return(value/1e3).toFixed(2)+'K';
+    return Number.isInteger(value)?value.toLocaleString('en-US'):value.toFixed(2);
+  }
+});
+Chart.overrides.doughnut.plugins.datalabels={display:false};
+Chart.overrides.pie.plugins.datalabels={display:false};
 // Fixed for this client — set from whatever was selected in the tool at export time.
 // Unlike the internal dashboard, the client report has no selector: a client's site type
 // doesn't change month to month, so it's baked in once here instead.
@@ -4946,6 +5427,12 @@ function fmt4(n){
   if(n==null||isNaN(n))return'—';
   return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
+function fmtCompact(n,dec=2){
+  if(n==null||isNaN(n))return'—';
+  const abs=Math.abs(n);
+  if(abs>=1e6)return(n/1e6).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec})+'M';
+  return fmtNum(n,dec);
+}
 function periodLabel(p){if(!p||p==='—')return p;const[y,mo]=p.split('-');const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return(mn[parseInt(mo,10)-1]||mo)+' '+y}
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
 function chartOpts({y='',y2='',y2right=false}={}){
@@ -4957,7 +5444,9 @@ function chartOpts({y='',y2='',y2right=false}={}){
       y:{title:{display:!!y,text:y,color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(209,217,230,.8)'}}
     }
   };
-  if(y2right)base.scales.y2={position:'right',title:{display:!!y2,text:y2,color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{drawOnChartArea:false}};
+  if(y2right){
+    base.scales.y2={position:'right',beginAtZero:false,title:{display:!!y2,text:y2,color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{drawOnChartArea:false}};
+  }
   return base;
 }
 function sumMetrics(data){
@@ -5054,11 +5543,11 @@ function renderMonthly(){
   const s=computeMonthlyStats(filteredData);
 
   document.getElementById('kpi-monthly').innerHTML=
-    '<div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">'+fmt4(s.totalCooling)+'</div><div class="kpi-unit">TRh</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">'+fmt4(s.totalPlant)+'</div><div class="kpi-unit">kWh</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">'+fmt4(s.elecSavings)+'</div><div class="kpi-unit">kWh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">'+fmtCompact(s.totalCooling)+'</div><div class="kpi-unit">TRh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">'+fmtCompact(s.totalPlant)+'</div><div class="kpi-unit">kWh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">'+fmtCompact(s.elecSavings)+'</div><div class="kpi-unit">kWh</div></div>'+
     '<div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">'+fmt4(s.co2)+'</div><div class="kpi-unit">Tons of CO₂e</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">'+fmtNum(s.trees)+'</div><div class="kpi-unit">Trees 🌳</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">'+fmtCompact(s.trees,0)+'</div><div class="kpi-unit">Trees 🌳</div></div>'+
     '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmt4(s.metrics.oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
     '<div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">'+fmt4(s.avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>';
 
@@ -5068,7 +5557,7 @@ function renderMonthly(){
     hotelEl.style.display='flex';
     hotelEl.innerHTML=
       '<div class="kpi"><div class="kpi-label">'+ft.metricLabel+'</div><div class="kpi-value">'+fmtNum(s.metrics.rns)+'</div><div class="kpi-unit">'+ft.metricAbbr+' / '+ft.maxLabel+' '+fmtNum(s.metrics.maxRns)+'</div></div>'+
-      '<div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">'+fmt4(s.metrics.totalElec)+'</div><div class="kpi-unit">kWh</div></div>'+
+      '<div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">'+fmtCompact(s.metrics.totalElec)+'</div><div class="kpi-unit">kWh</div></div>'+
       '<div class="kpi"><div class="kpi-label">Cooling / '+ft.metricAbbr+'</div><div class="kpi-value">'+fmt4(s.coolingPerRoom)+'</div><div class="kpi-unit">TRh/'+ft.metricAbbr+'</div></div>'+
       '<div class="kpi"><div class="kpi-label">Energy / '+ft.metricAbbr+'</div><div class="kpi-value">'+fmt4(s.energyPerRoom)+'</div><div class="kpi-unit">kWh/'+ft.metricAbbr+'</div></div>';
   } else {
@@ -5157,8 +5646,8 @@ function renderYearly(){
     '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmt4(s.oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
     '<div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">'+fmt4(s.avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
     '<div class="kpi"><div class="kpi-label">Avg Saving</div><div class="kpi-value green">'+s.avgSavingsPct+' %</div><div class="kpi-unit">vs old system</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">'+fmt4(s.totCooling)+'</div><div class="kpi-unit">TRh</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">'+fmt4(s.totElecSavings)+'</div><div class="kpi-unit">kWh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">'+fmtCompact(s.totCooling)+'</div><div class="kpi-unit">TRh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">'+fmtCompact(s.totElecSavings)+'</div><div class="kpi-unit">kWh</div></div>'+
     '<div class="kpi"><div class="kpi-label">Total Carbon Savings</div><div class="kpi-value green">'+fmt4(s.co2)+'</div><div class="kpi-unit">Tons CO₂e</div></div>';
 
   destroyChart('yearly-rns');
