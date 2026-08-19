@@ -51,6 +51,19 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 .filters-bar select{background:#fff;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer}
 .filters-bar select:focus{outline:none;border-color:var(--ses-blue)}
 .filters-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+/* Month multi-select — replaces a full row of one pill per month (unreadable once a
+   client has a year+ of history) with a single dropdown button + checklist panel. */
+.month-multiselect{position:relative}
+.month-ms-btn{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;min-width:140px;justify-content:space-between}
+.month-ms-btn:hover{border-color:var(--ses-blue)}
+.month-ms-caret{font-size:9px;color:var(--muted);transition:transform .15s}
+.month-multiselect.open .month-ms-caret{transform:rotate(180deg)}
+.month-ms-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(10,61,124,.14);min-width:200px;max-height:280px;overflow-y:auto;padding:6px}
+.month-multiselect.open .month-ms-panel{display:block}
+.month-ms-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;font-size:12px;color:var(--label);cursor:pointer;user-select:none;white-space:nowrap}
+.month-ms-row:hover{background:var(--surface2)}
+.month-ms-row input{cursor:pointer}
+.month-ms-row.all-row{font-weight:700;color:var(--ses-blue);border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:8px}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s;letter-spacing:.3px}
@@ -914,7 +927,13 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <option value="factory">🏭 Factory</option>
     </select>
     <select id="sel-year" onchange="onYearChange()"><option value="">All Years</option></select>
-    <div id="month-pills" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center"></div>
+    <div class="month-multiselect" id="month-multiselect">
+      <button type="button" class="month-ms-btn" id="month-ms-btn" onclick="toggleMonthDropdown(event)">
+        <span id="month-ms-label">All Months</span>
+        <span class="month-ms-caret">▾</span>
+      </button>
+      <div class="month-ms-panel" id="month-pills"></div>
+    </div>
     <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
       Compare to:
       <select id="sel-compare-to" onchange="onCompareToChange()" title="Applies everywhere a 'Last Month' comparison line is shown (Chiller Plant, Main CH, CHWP, CWP, CT, Pump Health). Defaults to the chronologically-previous month.">
@@ -2264,7 +2283,9 @@ async function buildDashboard(){
   showLoader(false);
 }
 
-// Build pill checkboxes for all available periods.
+// Builds the month checklist inside the dropdown panel (was a full row of one
+// pill per month — unreadable once a client has a year+ of history; now a
+// single "N months" / "All Months" button that opens this checklist).
 // preSelected: array of period strings to check, or null to check all.
 function buildMonthPills(periods, preSelected){
   const container=document.getElementById('month-pills');
@@ -2272,72 +2293,45 @@ function buildMonthPills(periods, preSelected){
   const checkAll=preSelected===null;
   container.innerHTML='';
 
-  function setPillStyle(pill,on,isAll=false){
-    pill.style.background=on?(isAll?'var(--ses-blue)':'rgba(10,61,124,.15)'):'var(--surface2)';
-    pill.style.color=on?(isAll?'#fff':'var(--ses-blue)'):'var(--label)';
-    pill.style.fontWeight=on?'700':'600';
-  }
-  function syncAllPill(){
+  function syncAllRow(){
     const total=container.querySelectorAll('input.mp-month').length;
     const checked=container.querySelectorAll('input.mp-month:checked').length;
     const allCbEl=document.getElementById('mp-all');
-    if(allCbEl){allCbEl.checked=(checked===total);setPillStyle(document.getElementById('pill-all'),checked===total,true);}
+    if(allCbEl) allCbEl.checked=(total>0&&checked===total);
   }
-  function applyAndFilter(){syncAllPill();filterDashboard();}
+  function applyAndFilter(){syncAllRow();updateMonthMsLabel();filterDashboard();}
 
-  // "All" pill — selects every month
-  const allPill=document.createElement('label');
-  allPill.id='pill-all';
+  // "All" row — selects/deselects every month at once
+  const allRow=document.createElement('label');
+  allRow.className='month-ms-row all-row';
+  allRow.htmlFor='mp-all';
   const allCb=document.createElement('input');
   allCb.type='checkbox';allCb.id='mp-all';allCb.checked=checkAll;
-  allCb.style.cssText='position:absolute;opacity:0;pointer-events:none';
-  allPill.style.cssText='display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;cursor:pointer;user-select:none;transition:all .15s;margin-right:4px';
-  setPillStyle(allPill,checkAll,true);
-  allPill.addEventListener('click',e=>{
-    e.preventDefault();
-    container.querySelectorAll('input.mp-month').forEach(c=>{
-      c.checked=true;
-      const lbl=container.querySelector(`label[for="${c.id}"]`);
-      if(lbl) setPillStyle(lbl,true);
-    });
-    allCb.checked=true;setPillStyle(allPill,true,true);
-    filterDashboard();
+  allRow.appendChild(allCb);
+  allRow.appendChild(document.createTextNode('All Months'));
+  allCb.addEventListener('change',()=>{
+    container.querySelectorAll('input.mp-month').forEach(c=>{c.checked=allCb.checked;});
+    applyAndFilter();
   });
-  allPill.appendChild(allCb);
-  allPill.appendChild(document.createTextNode('All'));
-  container.appendChild(allPill);
+  container.appendChild(allRow);
 
-  // Individual month pills
+  // One row per available period — plain independent checkboxes (this is a
+  // dropdown checklist now, not a row of exclusive-select pills).
   periods.forEach(p=>{
     const lbl=periodLabel(p)||p;
     const checked=checkAll||(preSelected&&preSelected.includes(p));
     const id='mp-'+p;
-    const pill=document.createElement('label');
-    pill.htmlFor=id;
-    pill.style.cssText='display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;cursor:pointer;user-select:none;transition:all .15s;';
-    setPillStyle(pill,checked);
+    const row=document.createElement('label');
+    row.className='month-ms-row';
+    row.htmlFor=id;
     const cb=document.createElement('input');
     cb.type='checkbox';cb.classList.add('mp-month');cb.id=id;cb.value=p;cb.checked=checked;
-    cb.style.cssText='position:absolute;opacity:0;pointer-events:none';
-    pill.addEventListener('click',e=>{
-      e.preventDefault();
-      if(e.ctrlKey||e.metaKey){
-        // Ctrl/Cmd+click: toggle without affecting others
-        cb.checked=!cb.checked;setPillStyle(pill,cb.checked);
-        applyAndFilter();
-      } else {
-        // Simple click: select ONLY this pill (exclusive)
-        container.querySelectorAll('input.mp-month').forEach(c=>{
-          c.checked=(c===cb);
-          const pl=container.querySelector(`label[for="${c.id}"]`);
-          if(pl) setPillStyle(pl,c===cb);
-        });
-        cb.checked=true;applyAndFilter();
-      }
-    });
-    pill.appendChild(cb);pill.appendChild(document.createTextNode(lbl));
-    container.appendChild(pill);
+    cb.addEventListener('change',applyAndFilter);
+    row.appendChild(cb);
+    row.appendChild(document.createTextNode(lbl));
+    container.appendChild(row);
   });
+  updateMonthMsLabel();
 }
 
 function getSelectedMonths(){
@@ -2345,6 +2339,33 @@ function getSelectedMonths(){
   if(!container)return[];
   return[...container.querySelectorAll('input.mp-month:checked')].map(cb=>cb.value);
 }
+
+// Keeps the dropdown button's summary text ("All Months" / "May 2026" /
+// "3 months") in sync with whatever is currently checked in the panel.
+function updateMonthMsLabel(){
+  const lblEl=document.getElementById('month-ms-label');
+  if(!lblEl)return;
+  const container=document.getElementById('month-pills');
+  const total=container?container.querySelectorAll('input.mp-month').length:0;
+  const selected=getSelectedMonths();
+  if(total===0||selected.length===total||selected.length===0){
+    lblEl.textContent='All Months';
+  }else if(selected.length===1){
+    lblEl.textContent=periodLabel(selected[0])||selected[0];
+  }else{
+    lblEl.textContent=selected.length+' months';
+  }
+}
+
+function toggleMonthDropdown(e){
+  e.stopPropagation();
+  document.getElementById('month-multiselect').classList.toggle('open');
+}
+// Close the dropdown on any click outside it (standard multi-select UX).
+document.addEventListener('click',e=>{
+  const ms=document.getElementById('month-multiselect');
+  if(ms&&ms.classList.contains('open')&&!ms.contains(e.target)) ms.classList.remove('open');
+});
 
 function onFacilityTypeChange(){
   selectedFacilityType=document.getElementById('sel-facility-type').value;
