@@ -101,10 +101,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 /* KPI GRID */
 .kpi-grid{display:flex;flex-wrap:wrap;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;box-shadow:0 2px 8px rgba(10,61,124,.08)}
 .kpi{background:#fff;padding:18px 20px;flex:1 1 160px;overflow:hidden}
-#kpi-hotel{flex-wrap:nowrap}#kpi-hotel .kpi{flex:1 1 0;min-width:0;padding:14px 10px}
-.kpi-label{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;font-weight:600;overflow-wrap:break-word}
+#kpi-hotel{flex-wrap:wrap}#kpi-hotel .kpi{flex:1 1 130px;min-width:130px;padding:12px 12px}
+.kpi-label{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;font-weight:600;overflow-wrap:break-word;min-height:2.3em;display:flex;align-items:flex-start}
+#kpi-hotel .kpi-label{font-size:11px;word-break:keep-all;overflow-wrap:normal;letter-spacing:.2px;white-space:nowrap;min-height:0;display:block}
 .kpi-value{font-size:24px;font-weight:800;letter-spacing:-.5px;overflow-wrap:break-word;word-break:break-word}
-#kpi-hotel .kpi-value{font-size:clamp(13px,1.5vw,24px)}
+#kpi-hotel .kpi-value{font-size:clamp(15px,1.6vw,22px);white-space:nowrap}
 .kpi-unit{font-size:11px;color:var(--muted);margin-top:2px}
 .kpi-sub{font-size:11px;margin-top:3px}
 .blue{color:var(--ses-blue)}.cyan{color:var(--ses-mid)}.purple{color:var(--ses-green)}.green{color:var(--ses-green)}.warn{color:var(--warn)}.bad{color:var(--bad)}
@@ -114,9 +115,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 .ashrae-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px}
 .ashrae-bar{position:relative;height:28px;border-radius:6px;overflow:hidden;display:flex}
 .ashrae-seg{flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
-.ashrae-needle-wrap{position:relative;height:16px;margin-top:4px}
-.ashrae-needle{position:absolute;width:2px;height:16px;background:var(--text);border-radius:1px;transform:translateX(-50%);transition:left .6s}
-.ashrae-needle::before{content:'▼';position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text)}
+.ashrae-bar-wrap{position:relative}
+.ashrae-needle{position:absolute;top:-5px;bottom:-5px;width:3px;background:#fff;border:1px solid rgba(0,0,0,.6);border-radius:2px;transform:translateX(-50%);transition:left .6s;box-shadow:0 0 3px rgba(0,0,0,.35);pointer-events:none;z-index:2}
+.ashrae-needle::after{content:'';position:absolute;top:-8px;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--text)}
 .ashrae-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px}
 .ashrae-value{font-size:20px;font-weight:800;margin-top:6px}
 .ashrae-zone{font-size:12px;font-weight:600;margin-top:2px}
@@ -165,6 +166,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 .card-title{font-size:12px;font-weight:700;color:var(--ses-blue)}
 .card-sub{font-size:10px;color:var(--muted);margin-top:2px}
 .card-body{padding:14px 16px;background:#fff}
+.avg-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)}
+.avg-chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text);background:var(--surface2);border-radius:12px;padding:3px 9px 3px 7px;white-space:nowrap}
+.avg-chip .dot{width:7px;height:7px;border-radius:50%;flex:none}
+.avg-chip .val{font-weight:700}
 .chart-h180{position:relative;height:180px}
 .chart-h220{position:relative;height:220px}
 .chart-h260{position:relative;height:260px}
@@ -1077,6 +1082,10 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
   <!-- PAGE: MONTHLY OVERVIEW -->
   <div class="page" id="page-monthly">
     <div class="section-title">Cooling as a Service — Project Parameters</div>
+    <div class="card" id="monthly-comment-card" style="margin-bottom:16px;display:none">
+      <div class="card-head"><div class="card-title">Client Comment — <span id="monthly-comment-period"></span></div></div>
+      <div class="card-body"><div id="monthly-comment-text" style="font-size:13px;color:var(--label);line-height:1.8;white-space:pre-line"></div></div>
+    </div>
     <div class="kpi-grid" id="kpi-monthly"></div>
 
     <!-- ASHRAE + Weekly chart -->
@@ -1084,13 +1093,15 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <div>
         <div class="ashrae-wrap">
           <div class="ashrae-title">ASHRAE Chiller Plant Efficiency Benchmark</div>
-          <div class="ashrae-bar">
-            <div class="ashrae-seg" style="background:#1a6b3a">EXCELLENT</div>
-            <div class="ashrae-seg" style="background:#2d8a4e">GOOD</div>
-            <div class="ashrae-seg" style="background:#d97706">FAIR</div>
-            <div class="ashrae-seg" style="background:#dc2626">NEED IMP.</div>
+          <div class="ashrae-bar-wrap">
+            <div class="ashrae-bar">
+              <div class="ashrae-seg" style="background:#1a6b3a">EXCELLENT</div>
+              <div class="ashrae-seg" style="background:#2d8a4e">GOOD</div>
+              <div class="ashrae-seg" style="background:#d97706">FAIR</div>
+              <div class="ashrae-seg" style="background:#dc2626">NEED IMP.</div>
+            </div>
+            <div class="ashrae-needle" id="ashrae-needle" style="left:50%"></div>
           </div>
-          <div class="ashrae-needle-wrap"><div class="ashrae-needle" id="ashrae-needle" style="left:50%"></div></div>
           <div class="ashrae-labels"><span>0.5</span><span>0.7</span><span>0.9</span><span>1.1</span><span>1.2</span></div>
           <div class="ashrae-value blue" id="ashrae-val">—</div>
           <div class="ashrae-zone" id="ashrae-zone"></div>
@@ -1152,12 +1163,6 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <div class="card-head"><div class="card-title" id="yearly-room-title">Cooling per Room & Energy per Room — per Month</div></div>
       <div class="card-body"><div class="chart-h180"><canvas id="chart-yearly-room"></canvas></div></div>
     </div>
-    <div class="card">
-      <div class="card-head"><div class="card-title">General Comments</div></div>
-      <div class="card-body">
-        <div id="comments-list" style="font-size:12px;color:var(--label);line-height:1.8"></div>
-      </div>
-    </div>
   </div>
 
   <!-- PAGE: CHILLER PLANT DETAILED -->
@@ -1199,10 +1204,13 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <option value="">All Chillers</option>
       </select>
     </div>
-    <!-- Primary chiller (CH1) spans the full width, across both graph-slots -->
-    <div id="mainch-ch1-row" style="margin-bottom:16px"></div>
+    <!-- Primary chiller (CH1) spans only the left half (same width as the other
+         chillers below it), not the full page width -->
     <div class="chart-grid grid-2" id="main-ch-grid" style="margin-bottom:16px">
-      <div id="chillers-container"></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div id="mainch-ch1-row"></div>
+        <div id="chillers-container"></div>
+      </div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card">
           <div class="card-head"><div class="card-title">Evaporator and Condenser Approach</div><div class="card-sub">Occurrence % + Approach (°C) vs Part Load</div></div>
@@ -1241,17 +1249,17 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       </div>
       <div class="card">
         <div class="card-head"><div class="card-title">Chilled Water Flow — Weekly</div><div class="card-sub">CHW Flow (LPS) per Week</div></div>
-        <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-flow"></canvas></div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-flow"></canvas></div><div class="avg-chips" id="chwp-flow-avgchips"></div></div>
       </div>
     </div>
     <div class="chart-grid grid-2">
       <div class="card">
         <div class="card-head"><div class="card-title">Evaporator Approach — Weekly</div><div class="card-sub">°C per Week</div></div>
-        <div class="card-body"><div class="chart-h220"><canvas id="chart-evap-approach"></canvas></div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-evap-approach"></canvas></div><div class="avg-chips" id="evap-approach-avgchips"></div></div>
       </div>
       <div class="card">
         <div class="card-head"><div class="card-title">Chilled Water Setpoint & Delta T — Weekly</div><div class="card-sub">Set Point (°C) + dT (°C)</div></div>
-        <div class="card-body"><div class="chart-h220"><canvas id="chart-chwp-setpoint"></canvas></div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-chwp-setpoint"></canvas></div><div class="avg-chips" id="chwp-setpoint-avgchips"></div></div>
       </div>
     </div>
   </div>
@@ -1281,13 +1289,13 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       </div>
       <div class="card">
         <div class="card-head"><div class="card-title">Condenser Water Flow — Weekly</div><div class="card-sub">CW Flow (LPS) per Week</div></div>
-        <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-flow"></canvas></div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-flow"></canvas></div><div class="avg-chips" id="cwp-flow-avgchips"></div></div>
       </div>
     </div>
     <div class="chart-grid grid-2">
       <div class="card">
         <div class="card-head"><div class="card-title">Condenser Approach — Weekly</div><div class="card-sub">°C per Week</div></div>
-        <div class="card-body"><div class="chart-h220"><canvas id="chart-cond-approach"></canvas></div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-cond-approach"></canvas></div><div class="avg-chips" id="cond-approach-avgchips"></div></div>
       </div>
     </div>
   </div>
@@ -1307,23 +1315,23 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       </div>
       <div class="card">
         <div class="card-head"><div class="card-title">Cooling Tower Approach — Weekly</div><div class="card-sub">CT Approach + Wet Bulb + Outside Air (°C)</div></div>
-        <div class="card-body"><div class="chart-h260"><canvas id="chart-ct-approach"></canvas></div></div>
+        <div class="card-body"><div class="chart-h260"><canvas id="chart-ct-approach"></canvas></div><div class="avg-chips" id="ct-approach-avgchips"></div></div>
       </div>
     </div>
     <div class="chart-grid grid-2">
       <div class="card">
         <div class="card-head"><div class="card-title">CWP TDS & pH — Weekly</div></div>
-        <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-tds"></canvas></div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-tds"></canvas></div><div class="avg-chips" id="ct-tds-avgchips"></div></div>
       </div>
       <div class="card">
         <div class="card-head"><div class="card-title">Cycle of Concentration (COC) — Weekly</div></div>
-        <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-coc"></canvas></div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-coc"></canvas></div><div class="avg-chips" id="ct-coc-avgchips"></div></div>
       </div>
     </div>
     <div class="chart-grid grid-2" style="margin-top:16px">
       <div class="card">
         <div class="card-head"><div class="card-title">Condenser Makeup Water — Weekly</div><div class="card-sub">m³ per Week</div></div>
-        <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-makeup"></canvas></div></div>
+        <div class="card-body"><div class="chart-h220"><canvas id="chart-ct-makeup"></canvas></div><div class="avg-chips" id="ct-makeup-avgchips"></div></div>
       </div>
     </div>
   </div>
@@ -2053,7 +2061,10 @@ async function parseFile(file,client){
         let comments=[];
         const cS=wb.Sheets['Comment'];
         if(cS){const cm=XLSX.utils.sheet_to_json(cS,{header:1,defval:null,raw:true});
-          for(let i=1;i<cm.length;i++){const row=cm[i];if(row[1])comments.push({text:row[1]})}}
+          for(let i=1;i<cm.length;i++){const row=cm[i];
+            if(row[1])comments.push({text:row[1],type:'client'});
+            if(row[2])comments.push({text:row[2],type:'ingé'});
+          }}
 
         // Dynamic chiller sheets: CH 1, CH 2, CH 3...
         const chillerSheets={};
@@ -2502,14 +2513,31 @@ function computeMonthlyStats(dataSubset){
 function renderMonthly(){
   const s=computeMonthlyStats(filteredData);
 
+  // Client comment for the current month only (not every month in the filtered range)
+  {
+    const selectedMonths=getSelectedMonths();
+    const sortedFD=filteredData.slice().sort((a,b)=>a.period.localeCompare(b.period));
+    const curPeriod=selectedMonths.length===1?selectedMonths[0]:(sortedFD.length?sortedFD[sortedFD.length-1].period:null);
+    const curData=sortedFD.find(d=>d.period===curPeriod)||sortedFD[sortedFD.length-1];
+    const clientComment=curData?(curData.comments||[]).find(c=>c.type==='client'):null;
+    const ccCard=document.getElementById('monthly-comment-card');
+    if(clientComment){
+      ccCard.style.display='';
+      document.getElementById('monthly-comment-period').textContent=periodLabel(curData.period)||curData.period;
+      document.getElementById('monthly-comment-text').textContent=clientComment.text;
+    } else {
+      ccCard.style.display='none';
+    }
+  }
+
   document.getElementById('kpi-monthly').innerHTML=`
     <div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">${fmtCompact(s.totalCooling,0)}</div><div class="kpi-unit">TRh</div></div>
     <div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">${fmtCompact(s.totalPlant,0)}</div><div class="kpi-unit">kWh</div></div>
     <div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">${fmtCompact(s.elecSavings,0)}</div><div class="kpi-unit">kWh</div></div>
     <div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">${fmt4(s.co2)}</div><div class="kpi-unit">Tons of CO₂e</div></div>
     <div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">${fmtCompact(s.trees,0)}</div><div class="kpi-unit">Trees 🌳</div></div>
-    <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmt4(s.metrics.oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
-    <div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">${fmt4(s.avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmtEff3(s.metrics.oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">${fmtEff3(s.avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
   `;
 
   const hotelEl=document.getElementById('kpi-hotel');
@@ -2520,7 +2548,7 @@ function renderMonthly(){
     hotelEl.innerHTML=`
       <div class="kpi"><div class="kpi-label">${ft.metricLabel}</div><div class="kpi-value">${fmtNum(s.metrics.rns)}</div><div class="kpi-unit">${ft.metricAbbr} / ${ft.maxLabel} ${fmtNum(s.metrics.maxRns)}</div></div>
       <div class="kpi"><div class="kpi-label">${ft.utilLabel}</div><div class="kpi-value">${occPct!=null?fmtNum(occPct,0)+'%':'—'}</div><div class="kpi-unit">of full ${ft.utilLabel.toLowerCase()}</div></div>
-      <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmtCompact(s.metrics.totalElec)}</div><div class="kpi-unit">kWh</div></div>
+      <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmtCompact(s.metrics.totalElec,0)}</div><div class="kpi-unit">kWh</div></div>
       <div class="kpi"><div class="kpi-label">Cooling / ${ft.metricAbbr}</div><div class="kpi-value">${fmt4(s.coolingPerRoom)}</div><div class="kpi-unit">TRh/${ft.metricAbbr}</div></div>
       <div class="kpi"><div class="kpi-label">Energy / ${ft.metricAbbr}</div><div class="kpi-value">${fmt4(s.energyPerRoom)}</div><div class="kpi-unit">kWh/${ft.metricAbbr}</div></div>
     `;
@@ -2530,7 +2558,7 @@ function renderMonthly(){
   }
 
   document.getElementById('ashrae-needle').style.left=s.ashraeNeedlePct+'%';
-  document.getElementById('ashrae-val').textContent=fmtNum(s.avgEff,2)+' kW/TR';
+  document.getElementById('ashrae-val').textContent=fmtNum(s.avgEff,3)+' kW/TR';
   const zEl=document.getElementById('ashrae-zone');
   zEl.textContent=s.ashraeZone;zEl.style.color=s.ashraeColor;
 
@@ -2545,8 +2573,8 @@ function renderMonthly(){
         labels:allWeekly.map(w=>(w.period?w.period.split('-').reverse().join('/'):'')+' '+w.week),
         datasets:[
           {label:'Cooling Load (TR)',data:allWeekly.map(w=>+w.coolingLoad.toFixed(1)),backgroundColor:'rgba(59,130,246,.6)',borderRadius:4,yAxisID:'y'},
-          {label:'Plant Eff (kW/TR)',data:allWeekly.map(w=>+w.plantEff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-          {label:'Chiller Eff (kW/TR)',data:allWeekly.map(w=>+w.chillerEff.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+          {label:'Plant Eff (kW/TR)',data:allWeekly.map(w=>+w.plantEff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+          {label:'Chiller Eff (kW/TR)',data:allWeekly.map(w=>+w.chillerEff.toFixed(3)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
         ]
       },
       options:chartOpts({y:'TR',y2:'kW/TR',y2right:true})
@@ -2691,12 +2719,6 @@ function renderYearly(){
       options:chartOpts({y:`TRh/${ftY.metricAbbr}`,y2:`kWh/${ftY.metricAbbr}`,y2right:true})
     });
   }
-
-  // Comments — most recent month first, so the list reads as a quick-context summary
-  const comments=filteredData.slice().sort((a,b)=>b.period.localeCompare(a.period)).flatMap(d=>d.comments);
-  const cl=document.getElementById('comments-list');
-  if(comments.length){cl.innerHTML=comments.map(c=>`<div style="margin-bottom:6px;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--accent)">— ${c.text}</div>`).join('')}
-  else{cl.innerHTML='<div style="color:var(--muted)">No comments found in loaded files.</div>'}
 }
 
 // ═══════════════════════════════════════════════════
@@ -2745,7 +2767,7 @@ function renderDetailed(){
   // labeled inside it and the period's total shown as a badge above the bar. ──
   destroyChart('eff-compare');
   const stackColors=['#0a3d7c','#7dd3fc','#3b82f6','#2d8a4e','#94a3b8'];
-  const fmtEff=v=>(v==null||isNaN(v))?'':v.toFixed(2);
+  const fmtEff=v=>(v==null||isNaN(v))?'':v.toFixed(3);
   const effPeriodLabels=[];
   const perComponent=keys.map(()=>[]);
   const effTotals=[];
@@ -2899,11 +2921,11 @@ function renderDetailed(){
     const totalOcc=pl.reduce((s,p)=>s+p.occurrence,0)||1;
     const ds=[
       {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/totalOcc*100).toFixed(2)),backgroundColor:'rgba(59,130,246,.25)',borderRadius:3,yAxisID:'y'},
-      {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:'Current (kW/TR)',data:pl.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
-    if(plLast.length) ds.push({label:'Last Month (kW/TR)',data:plLast.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,borderDash:[],fill:false,yAxisID:'y2'});
-    if(plLast2.length) ds.push({label:'Last 2 Month (kW/TR)',data:plLast2.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
-    if(pr.length) ds.push({label:'Reference (kW/TR)',data:pr.map(p=>+p.plantEff.toFixed(2)),type:'line',borderColor:'rgba(245,158,11,.8)',pointRadius:3,borderDash:[4,4],borderWidth:2,fill:false,yAxisID:'y2'});
+    if(plLast.length) ds.push({label:'Last Month (kW/TR)',data:plLast.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,borderDash:[],fill:false,yAxisID:'y2'});
+    if(plLast2.length) ds.push({label:'Last 2 Month (kW/TR)',data:plLast2.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
+    if(pr.length) ds.push({label:'Reference (kW/TR)',data:pr.map(p=>+p.plantEff.toFixed(3)),type:'line',borderColor:'rgba(245,158,11,.8)',pointRadius:3,borderDash:[4,4],borderWidth:2,fill:false,yAxisID:'y2'});
     charts['partload']=new Chart(document.getElementById('chart-partload').getContext('2d'),{
       type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},
       options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})
@@ -2919,10 +2941,10 @@ function renderDetailed(){
     const tot=ch1.reduce((s,p)=>s+p.occurrence,0)||1;
     const ds2=[
       {label:'Occurrence (%)',data:ch1.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(139,92,246,.25)',borderRadius:3,yAxisID:'y'},
-      {label:'Current (kW/TR)',data:ch1.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#8b5cf6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:'Current (kW/TR)',data:ch1.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#8b5cf6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
-    if(ch1Last.length) ds2.push({label:'Last Month (kW/TR)',data:ch1Last.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
-    if(ch1Last2.length) ds2.push({label:'Last 2 Month (kW/TR)',data:ch1Last2.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
+    if(ch1Last.length) ds2.push({label:'Last Month (kW/TR)',data:ch1Last.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
+    if(ch1Last2.length) ds2.push({label:'Last 2 Month (kW/TR)',data:ch1Last2.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
     charts['partload-ch1']=new Chart(document.getElementById('chart-partload-ch1').getContext('2d'),{
       type:'bar',data:{labels:ch1.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds2},
       options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})
@@ -3018,8 +3040,9 @@ function renderMainCH(){
   if(grid){grid.style.gridTemplateColumns='1fr 1fr';container.style.gridColumn='';}
 
   // Primary chiller (CH1, or whichever sorts first / is selected in the dropdown)
-  // gets its own full-width row spanning both graph-slots at the top; any other
-  // chillers (CH2, CH3, ...) are arranged below, alongside Approach/Flow.
+  // gets its own row at the top of the left column (half page width, same width
+  // as the other chillers below it and the Approach/Flow column on the right);
+  // any other chillers (CH2, CH3, ...) are arranged below it in that same column.
   const primaryCH=visibleChillers[0];
   const restChillers=visibleChillers.slice(1);
   const buildChCard=(cn,tall)=>{
@@ -3027,7 +3050,7 @@ function renderMainCH(){
     return `<div class="card"><div class="card-head"><div class="card-title">${cn} VS Specification</div><div class="card-sub">Part Load — Current + Last Month + Last 2 Month</div></div><div class="card-body"><div class="${tall?'chart-h300':'chart-h260'}"><canvas id="${id}"></canvas></div></div></div>`;
   };
   const ch1Row=document.getElementById('mainch-ch1-row');
-  if(ch1Row) ch1Row.innerHTML=primaryCH?buildChCard(primaryCH,true):'';
+  if(ch1Row) ch1Row.innerHTML=primaryCH?buildChCard(primaryCH,false):'';
   container.innerHTML=restChillers.length?`<div class="${restChillers.length>1?'chart-grid grid-2':''}">${restChillers.map(cn=>buildChCard(cn,false)).join('')}</div>`:'';
 
   [primaryCH,...restChillers].filter(Boolean).forEach(cn=>{
@@ -3040,11 +3063,11 @@ function renderMainCH(){
     const tot=curr.reduce((s,p)=>s+p.occurrence,0)||1;
     const ds=[
       {label:'Occurrence (%)',data:curr.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(59,130,246,.25)',borderRadius:3,yAxisID:'y'},
-      {label:'Current (kW/TR)',data:curr.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:'Current (kW/TR)',data:curr.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
-    if(last.length) ds.push({label:'Last Month',data:last.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
-    if(last2.length) ds.push({label:'Last 2 Month',data:last2.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
-    if(ref.length) ds.push({label:'Reference',data:ref.map(p=>+p.chillerEff.toFixed(2)),type:'line',borderColor:'rgba(245,158,11,.8)',pointRadius:3,borderDash:[4,4],borderWidth:2,fill:false,yAxisID:'y2'});
+    if(last.length) ds.push({label:'Last Month',data:last.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
+    if(last2.length) ds.push({label:'Last 2 Month',data:last2.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:1,borderDash:[4,4],fill:false,yAxisID:'y2'});
+    if(ref.length) ds.push({label:'Reference',data:ref.map(p=>+p.chillerEff.toFixed(3)),type:'line',borderColor:'rgba(245,158,11,.8)',pointRadius:3,borderDash:[4,4],borderWidth:2,fill:false,yAxisID:'y2'});
     charts[id]=new Chart(document.getElementById(id).getContext('2d'),{
       type:'bar',data:{labels:curr.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},
       options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})
@@ -3087,6 +3110,7 @@ function binRawByPartLoad(rows,capacity,field,partLoads){
 function renderCHWP(){
   const weekly=getWeeklyForFilter();
   const{thisPer,lastPer,getData}=getPeriodHelpers();
+  const lastWeekly=lastPer?mergeWeeklyData(getData(lastPer,'weekly')):[];
 
   // Collect all CHWP sheet names from filtered data
   const thisPeriodData=allData.filter(d=>d.period===thisPer);
@@ -3123,9 +3147,9 @@ function renderCHWP(){
     const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
     const ds=[
       {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(6,182,212,.25)',borderRadius:3,yAxisID:'y'},
-      {label:`Current (kW/TR)${titleSuffix}`,data:pl.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:`Current (kW/TR)${titleSuffix}`,data:pl.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
-    if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
+    if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
     charts['chwp-pl']=new Chart(document.getElementById('chart-chwp-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
   }
   // Evaporator Flow / Approach vs Part-Load — same Occurrence bins as the
@@ -3165,24 +3189,36 @@ function renderCHWP(){
   if(weekly.length){
     const flowVals=weekly.map(w=>+w.chwFlow.toFixed(2));
     const ds=[{label:'CHW Flow (LPS)',data:flowVals,backgroundColor:'rgba(6,182,212,.6)',borderRadius:3}];
-    const avgDs=avgLineDataset(flowVals,'Average (LPS)');if(avgDs)ds.push(avgDs);
+    const avgDs=avgLineDataset(flowVals,'Average',null,0);if(avgDs)ds.push(avgDs);
+    let lastAvg=null;
+    if(lastWeekly.length){lastAvg=lastAvgLineDataset(lastWeekly.map(w=>+w.chwFlow.toFixed(2)),flowVals.length,'Last Month Average',null,1);if(lastAvg)ds.push(lastAvg);}
     charts['chwp-flow']=new Chart(document.getElementById('chart-chwp-flow').getContext('2d'),{
       type:'bar',
       data:{labels:weekly.map(w=>w.yearWeek||w.week),datasets:ds},
       options:{...chartOpts({y:'LPS'}),plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}},tooltip:{mode:'index',intersect:false}}}
     });
+    renderAvgChips('chwp-flow-avgchips',[
+      avgDs&&{label:'Average',value:avgDs.data[0],unit:' LPS',color:'rgba(100,116,139,.9)'},
+      lastAvg&&{label:'Last Month',value:lastAvg.data[0],unit:' LPS',color:'rgba(217,119,6,.9)'},
+    ]);
   }
   // Evaporator Approach weekly
   destroyChart('evap-approach');
   if(weekly.length){
     const appVals=weekly.map(w=>+w.evapApproach.toFixed(2));
     const ds=[{label:'Evaporator Approach (°C)',data:appVals,backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}];
-    const avgDs=avgLineDataset(appVals,'Average (°C)');if(avgDs)ds.push(avgDs);
+    const avgDs=avgLineDataset(appVals,'Average',null,0);if(avgDs)ds.push(avgDs);
+    let lastAvg=null;
+    if(lastWeekly.length){lastAvg=lastAvgLineDataset(lastWeekly.map(w=>+w.evapApproach.toFixed(2)),appVals.length,'Last Month Average',null,1);if(lastAvg)ds.push(lastAvg);}
     charts['evap-approach']=new Chart(document.getElementById('chart-evap-approach').getContext('2d'),{
       type:'bar',
       data:{labels:weekly.map(w=>w.yearWeek||w.week),datasets:ds},
       options:chartOpts({y:'°C'})
     });
+    renderAvgChips('evap-approach-avgchips',[
+      avgDs&&{label:'Average',value:avgDs.data[0],unit:'°C',color:'rgba(100,116,139,.9)'},
+      lastAvg&&{label:'Last Month',value:lastAvg.data[0],unit:'°C',color:'rgba(217,119,6,.9)'},
+    ]);
   }
   // Setpoint & dT weekly
   destroyChart('chwp-setpoint');
@@ -3193,13 +3229,29 @@ function renderCHWP(){
       {label:'Set Point (°C)',data:spVals,borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
       {label:'Delta T (°C)',data:dtVals,borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
-    const spAvg=avgLineDataset(spVals,'Set Point Average');if(spAvg)ds.push(spAvg);
-    const dtAvg=avgLineDataset(dtVals,'Delta T Average','y2');if(dtAvg)ds.push(dtAvg);
+    // This chart has two y-axes (Set Point on the left, Delta T on the right) with different
+    // scales, so a dashed reference line drawn on each axis can land at nearly the same pixel
+    // height even though the underlying values differ — four such lines made the chart itself
+    // unreadable. So on this chart the averages are computed (for the chip row below) but not
+    // drawn as lines; only the chip row conveys the numbers.
+    const spAvg=avgLineDataset(spVals,'Set Point Average',null);
+    const dtAvg=avgLineDataset(dtVals,'Delta T Average','y2');
+    let spLastAvg=null,dtLastAvg=null;
+    if(lastWeekly.length){
+      spLastAvg=lastAvgLineDataset(lastWeekly.map(w=>+w.setPoint.toFixed(2)),spVals.length,'Last Month Set Point Average',null);
+      dtLastAvg=lastAvgLineDataset(lastWeekly.map(w=>+w.dT.toFixed(2)),dtVals.length,'Last Month Delta T Average','y2');
+    }
     charts['chwp-setpoint']=new Chart(document.getElementById('chart-chwp-setpoint').getContext('2d'),{
       type:'line',
       data:{labels:weekly.map(w=>w.yearWeek||w.week),datasets:ds},
       options:chartOpts({y:'°C (SP)',y2:'°C (dT)',y2right:true})
     });
+    renderAvgChips('chwp-setpoint-avgchips',[
+      spAvg&&{label:'Set Point Avg',value:spAvg.data[0],unit:'°C',color:'#3b82f6'},
+      dtAvg&&{label:'Delta T Avg',value:dtAvg.data[0],unit:'°C',color:'#06b6d4'},
+      spLastAvg&&{label:'Last Month SP Avg',value:spLastAvg.data[0],unit:'°C',color:'rgba(217,119,6,.9)'},
+      dtLastAvg&&{label:'Last Month dT Avg',value:dtLastAvg.data[0],unit:'°C',color:'rgba(217,119,6,.55)'},
+    ]);
   }
 }
 
@@ -3209,6 +3261,7 @@ function renderCHWP(){
 function renderCWP(){
   const weekly=getWeeklyForFilter();
   const{thisPer,lastPer,getData}=getPeriodHelpers();
+  const lastWeekly=lastPer?mergeWeeklyData(getData(lastPer,'weekly')):[];
 
   const thisPeriodData=allData.filter(d=>d.period===thisPer);
   const allCWPNames=[...new Set(thisPeriodData.flatMap(d=>Object.keys(d.cwpSheets||{})))].sort();
@@ -3240,30 +3293,42 @@ function renderCWP(){
     const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
     const ds=[
       {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(16,185,129,.25)',borderRadius:3,yAxisID:'y'},
-      {label:`Current (kW/TR)${titleSuffix}`,data:pl.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:`Current (kW/TR)${titleSuffix}`,data:pl.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
-    if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
+    if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#f59e0b',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
     charts['cwp-pl']=new Chart(document.getElementById('chart-cwp-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
   }
   destroyChart('cwp-flow');
   if(weekly.length){
     const flowVals=weekly.map(w=>+w.cwFlow.toFixed(2));
     const ds=[{label:'CW Flow (LPS)',data:flowVals,backgroundColor:'rgba(16,185,129,.6)',borderRadius:3}];
-    const avgDs=avgLineDataset(flowVals,'Average (LPS)');if(avgDs)ds.push(avgDs);
+    const avgDs=avgLineDataset(flowVals,'Average',null,0);if(avgDs)ds.push(avgDs);
+    let lastAvg=null;
+    if(lastWeekly.length){lastAvg=lastAvgLineDataset(lastWeekly.map(w=>+w.cwFlow.toFixed(2)),flowVals.length,'Last Month Average',null,1);if(lastAvg)ds.push(lastAvg);}
     charts['cwp-flow']=new Chart(document.getElementById('chart-cwp-flow').getContext('2d'),{
       type:'bar',data:{labels:weekly.map(w=>w.yearWeek||w.week),datasets:ds},
       options:chartOpts({y:'LPS'})
     });
+    renderAvgChips('cwp-flow-avgchips',[
+      avgDs&&{label:'Average',value:avgDs.data[0],unit:' LPS',color:'rgba(100,116,139,.9)'},
+      lastAvg&&{label:'Last Month',value:lastAvg.data[0],unit:' LPS',color:'rgba(217,119,6,.9)'},
+    ]);
   }
   destroyChart('cond-approach');
   if(weekly.length){
     const appVals=weekly.map(w=>+(w.condApproach||0).toFixed(2));
     const ds=[{label:'Condenser Approach (°C)',data:appVals,backgroundColor:'rgba(245,158,11,.6)',borderRadius:3}];
-    const avgDs=avgLineDataset(appVals,'Average (°C)');if(avgDs)ds.push(avgDs);
+    const avgDs=avgLineDataset(appVals,'Average',null,0);if(avgDs)ds.push(avgDs);
+    let lastAvg=null;
+    if(lastWeekly.length){lastAvg=lastAvgLineDataset(lastWeekly.map(w=>+(w.condApproach||0).toFixed(2)),appVals.length,'Last Month Average',null,1);if(lastAvg)ds.push(lastAvg);}
     charts['cond-approach']=new Chart(document.getElementById('chart-cond-approach').getContext('2d'),{
       type:'bar',data:{labels:weekly.map(w=>w.yearWeek||w.week),datasets:ds},
       options:chartOpts({y:'°C'})
     });
+    renderAvgChips('cond-approach-avgchips',[
+      avgDs&&{label:'Average',value:avgDs.data[0],unit:'°C',color:'rgba(100,116,139,.9)'},
+      lastAvg&&{label:'Last Month',value:lastAvg.data[0],unit:'°C',color:'rgba(217,119,6,.9)'},
+    ]);
   }
   // Condenser Flow / Approach vs Part-Load — same pattern as CHWP: Occurrence
   // bins from the CWP sheet, Flow/Approach line averaged from Raw Data.
@@ -3304,6 +3369,7 @@ function renderCWP(){
 function renderCT(){
   const weekly=getWeeklyForFilter();
   const{thisPer,lastPer,getData}=getPeriodHelpers();
+  const lastWeekly=lastPer?mergeWeeklyData(getData(lastPer,'weekly')):[];
 
   const thisPeriodData=allData.filter(d=>d.period===thisPer);
   const allCTNames=[...new Set(thisPeriodData.flatMap(d=>Object.keys(d.ctSheets||{})))].sort();
@@ -3338,9 +3404,9 @@ function renderCT(){
     const tot=pl.reduce((s,p)=>s+p.occurrence,0)||1;
     const ds=[
       {label:'Occurrence (%)',data:pl.map(p=>+(p.occurrence/tot*100).toFixed(2)),backgroundColor:'rgba(245,158,11,.25)',borderRadius:3,yAxisID:'y'},
-      {label:`Current (kW/TR)${titleSuffix}`,data:pl.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:`Current (kW/TR)${titleSuffix}`,data:pl.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
-    if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
+    if(plLast.length) ds.push({label:'Last Month',data:plLast.map(p=>+p.eff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'});
     charts['ct-pl']=new Chart(document.getElementById('chart-ct-pl').getContext('2d'),{type:'bar',data:{labels:pl.map(p=>(p.partLoad*100).toFixed(0)+'%'),datasets:ds},options:chartOpts({y:'Occurrence %',y2:'kW/TR',y2right:true})});
   }
   const xlabels=weekly.map(w=>w.yearWeek||w.week);
@@ -3353,10 +3419,16 @@ function renderCT(){
       {label:'Outside Air (°C)',data:weekly.map(w=>+(w.outsideAir||0).toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
       {label:'SUM WB & Approach',data:weekly.map(w=>+((w.wetBulb||0)+(w.ct1Approach||0)).toFixed(2)),type:'line',borderColor:'#8b5cf6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
-    const avgDs=avgLineDataset(approachVals,'Approach Average','y');if(avgDs)ds.push(avgDs);
+    const avgDs=avgLineDataset(approachVals,'Approach Average','y',0);if(avgDs)ds.push(avgDs);
+    let lastAvg=null;
+    if(lastWeekly.length){lastAvg=lastAvgLineDataset(lastWeekly.map(w=>+(w.ct1Approach||0).toFixed(2)),approachVals.length,'Last Month Approach Average','y',1);if(lastAvg)ds.push(lastAvg);}
     charts['ct-approach']=new Chart(document.getElementById('chart-ct-approach').getContext('2d'),{
       type:'bar',data:{labels:xlabels,datasets:ds},options:chartOpts({y:'CT Approach (°C)',y2:'Temperature (°C)',y2right:true})
     });
+    renderAvgChips('ct-approach-avgchips',[
+      avgDs&&{label:'Approach Avg',value:avgDs.data[0],unit:'°C',color:'rgba(100,116,139,.9)'},
+      lastAvg&&{label:'Last Month',value:lastAvg.data[0],unit:'°C',color:'rgba(217,119,6,.9)'},
+    ]);
   }
   destroyChart('ct-tds');
   if(weekly.length){
@@ -3366,29 +3438,55 @@ function renderCT(){
       {label:'TDS',data:tdsVals,borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false},
       {label:'pH',data:phVals,borderColor:'#3b82f6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
     ];
-    const tdsAvg=avgLineDataset(tdsVals,'TDS Average');if(tdsAvg)ds.push(tdsAvg);
-    const phAvg=avgLineDataset(phVals,'pH Average','y2');if(phAvg)ds.push(phAvg);
+    // Same reasoning as the Setpoint/Delta T chart: TDS and pH sit on two differently-scaled
+    // axes, so their reference lines can visually coincide even when the values differ —
+    // compute the averages for the chip row, but don't draw them as lines on the chart.
+    const tdsAvg=avgLineDataset(tdsVals,'TDS Average',null);
+    const phAvg=avgLineDataset(phVals,'pH Average','y2');
+    let tdsLastAvg=null,phLastAvg=null;
+    if(lastWeekly.length){
+      tdsLastAvg=lastAvgLineDataset(lastWeekly.map(w=>+(w.tds||0).toFixed(0)),tdsVals.length,'Last Month TDS Average',null);
+      phLastAvg=lastAvgLineDataset(lastWeekly.map(w=>+(w.ph||0).toFixed(2)),phVals.length,'Last Month pH Average','y2');
+    }
     charts['ct-tds']=new Chart(document.getElementById('chart-ct-tds').getContext('2d'),{
       type:'line',data:{labels:xlabels,datasets:ds},options:chartOpts({y:'TDS',y2:'pH',y2right:true})
     });
+    renderAvgChips('ct-tds-avgchips',[
+      tdsAvg&&{label:'TDS Avg',value:tdsAvg.data[0],unit:'',color:'#10b981'},
+      phAvg&&{label:'pH Avg',value:phAvg.data[0],unit:'',color:'#3b82f6'},
+      tdsLastAvg&&{label:'Last Month TDS Avg',value:tdsLastAvg.data[0],unit:'',color:'rgba(217,119,6,.9)'},
+      phLastAvg&&{label:'Last Month pH Avg',value:phLastAvg.data[0],unit:'',color:'rgba(217,119,6,.55)'},
+    ]);
   }
   destroyChart('ct-coc');
   if(weekly.length){
     const cocVals=weekly.map(w=>+(w.coc||0).toFixed(2));
     const ds=[{label:'COC',data:cocVals,backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}];
-    const avgDs=avgLineDataset(cocVals,'Average');if(avgDs)ds.push(avgDs);
+    const avgDs=avgLineDataset(cocVals,'Average',null,0);if(avgDs)ds.push(avgDs);
+    let lastAvg=null;
+    if(lastWeekly.length){lastAvg=lastAvgLineDataset(lastWeekly.map(w=>+(w.coc||0).toFixed(2)),cocVals.length,'Last Month Average',null,1);if(lastAvg)ds.push(lastAvg);}
     charts['ct-coc']=new Chart(document.getElementById('chart-ct-coc').getContext('2d'),{
       type:'bar',data:{labels:xlabels,datasets:ds},options:chartOpts({y:'COC'})
     });
+    renderAvgChips('ct-coc-avgchips',[
+      avgDs&&{label:'Average',value:avgDs.data[0],unit:'',color:'rgba(100,116,139,.9)'},
+      lastAvg&&{label:'Last Month',value:lastAvg.data[0],unit:'',color:'rgba(217,119,6,.9)'},
+    ]);
   }
   destroyChart('ct-makeup');
   if(weekly.length){
     const makeupVals=weekly.map(w=>+(w.makeupWater||0).toFixed(2));
     const ds=[{label:'Condenser Makeup Water (m³)',data:makeupVals,backgroundColor:'rgba(59,130,246,.6)',borderRadius:3}];
-    const avgDs=avgLineDataset(makeupVals,'Average (m³)');if(avgDs)ds.push(avgDs);
+    const avgDs=avgLineDataset(makeupVals,'Average',null,0);if(avgDs)ds.push(avgDs);
+    let lastAvg=null;
+    if(lastWeekly.length){lastAvg=lastAvgLineDataset(lastWeekly.map(w=>+(w.makeupWater||0).toFixed(2)),makeupVals.length,'Last Month Average',null,1);if(lastAvg)ds.push(lastAvg);}
     charts['ct-makeup']=new Chart(document.getElementById('chart-ct-makeup').getContext('2d'),{
       type:'bar',data:{labels:xlabels,datasets:ds},options:chartOpts({y:'m³'})
     });
+    renderAvgChips('ct-makeup-avgchips',[
+      avgDs&&{label:'Average',value:avgDs.data[0],unit:' m³',color:'rgba(100,116,139,.9)'},
+      lastAvg&&{label:'Last Month',value:lastAvg.data[0],unit:' m³',color:'rgba(217,119,6,.9)'},
+    ]);
   }
 }
 
@@ -3540,17 +3638,56 @@ function renderPumpHealth(){
     const ds=[
       {label:'Occurrence (%)',data:buckets.map(b=>+b.occurrencePct.toFixed(2)),backgroundColor:'rgba(59,130,246,.25)',borderRadius:3,yAxisID:'y'},
     ];
+    let hasDelta=false;
     series.forEach(s=>{
-      ds.push({label:s.label,data:buckets.map(b=>fmt(b[s.metric])),type:'line',borderColor:s.color,pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:false});
+      const curDs={label:s.label,data:buckets.map(b=>fmt(b[s.metric])),type:'line',borderColor:s.color,pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:false};
+      ds.push(curDs);
       if(s.showLastMonth&&bucketsLast.length){
         // align the comparison month's values to the same frequency labels as the current
         // month; buckets with no data that month are 0 (not a gap), so the line connects
         // straight through them — matches the reference Excel charts' behavior.
         const lastByFreq={}; bucketsLast.forEach(b=>lastByFreq[b.freq]=b[s.metric]);
-        ds.push({label:s.label+' — '+compareLabel,data:buckets.map(b=>fmt(lastByFreq[b.freq])),type:'line',borderColor:'#f59e0b',pointRadius:0,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:false});
+        ds.push({label:s.label+' — '+compareLabel,data:buckets.map(b=>fmt(lastByFreq[b.freq])),type:'line',borderColor:'#f59e0b',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2',spanGaps:false});
+        // Per-point % shift vs last month, as its OWN curve on a third axis (rather than
+        // text labels scattered over the value curve — tried first, but with a tooltip open
+        // or several close points the numbers overlapped and covered the data). The shape of
+        // this line shows where the shift is biggest at a glance; points are colored red/green
+        // by whether that shift is good or bad (points only, not the connecting line, since a
+        // single line can't be two colors and this keeps the trace itself easy to follow).
+        const pct=buckets.map(b=>{
+          const cur=b[s.metric],last=lastByFreq[b.freq];
+          if(cur==null||last==null||!last)return null;
+          return +((cur-last)/last*100).toFixed(1);
+        });
+        if(pct.some(p=>p!=null)){
+          hasDelta=true;
+          // Red = increase, green = decrease, when the metric has no defined "better"
+          // direction (Flow, Head, Range & Approach) — same red/green look as the metrics
+          // that DO have a defined direction (Power, Efficiency), just without claiming to
+          // judge whether that particular increase or decrease is actually good or bad.
+          const ptColor=p=>{
+            if(p==null)return 'transparent';
+            if(higherIsBetter==null)return p>0?'#dc2626':(p<0?'#16a34a':'#64748b');
+            return (higherIsBetter?p<0:p>0)?'#dc2626':'#16a34a';
+          };
+          ds.push({
+            label:'Δ '+s.label+' (%)',
+            data:pct,
+            type:'line',
+            borderColor:'rgba(100,116,139,.6)',
+            borderDash:[4,3],
+            borderWidth:1.5,
+            pointRadius:3,
+            pointBackgroundColor:pct.map(ptColor),
+            pointBorderColor:pct.map(ptColor),
+            fill:false,
+            spanGaps:true,
+            yAxisID:'y3',
+          });
+        }
       }
     });
-    charts[canvasId]=new Chart(el.getContext('2d'),{type:'bar',data:{labels,datasets:ds},options:chartOpts({y:'Occurrence %',y2:axisLabel,y2right:true})});
+    charts[canvasId]=new Chart(el.getContext('2d'),{type:'bar',data:{labels,datasets:ds},options:chartOpts({y:'Occurrence %',y2:axisLabel,y2right:true,y3:hasDelta?'Δ %':'',y3right:hasDelta})});
   };
 
   mkChart('chwp-health-power',chwpThis,chwpLast,[
@@ -3581,11 +3718,13 @@ function renderPumpHealth(){
 // COMMENTS PAGE
 // ═══════════════════════════════════════════════════
 function renderComments(){
-  const comments=filteredData.slice().sort((a,b)=>b.period.localeCompare(a.period)).flatMap(d=>d.comments);
+  // Engineer ("ingé") comments only — client comments live on the Monthly page instead
+  const sorted=filteredData.slice().sort((a,b)=>b.period.localeCompare(a.period));
+  const comments=sorted.flatMap(d=>(d.comments||[]).filter(c=>c.type==='ingé').map(c=>({...c,period:d.period})));
   const el=document.getElementById('comments-detailed');
   if(!el)return;
   if(comments.length){
-    el.innerHTML=comments.map(c=>`<p style="margin-bottom:14px;padding-left:12px;border-left:3px solid var(--accent)">— ${c.text}</p>`).join('');
+    el.innerHTML=comments.map(c=>`<p style="margin-bottom:14px;padding-left:12px;border-left:3px solid var(--accent)"><strong>${periodLabel(c.period)||c.period}</strong><br>— ${c.text}</p>`).join('');
   } else {
     el.innerHTML='<div style="color:var(--muted)">No comments found in loaded files.</div>';
   }
@@ -4468,7 +4607,7 @@ function renderRaw(){
   tb.innerHTML=rows.map(r=>{
     const ec=r.plantEff<0.8?'eff-good':r.plantEff<1.0?'eff-mid':'eff-bad';
     const dot=`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${clientColor(r.client)};margin-right:4px"></span>`;
-    return`<tr><td>${fmtDate(r.dateSerial)}</td><td>${dot}${r.client}</td><td>${periodLabel(r.period)||r.period}</td><td>${fmtNum(r.cooling,1)}</td><td>${fmtNum(r.chiller,1)}</td><td>${fmtNum(r.chwp,1)}</td><td>${fmtNum(r.cwp,1)}</td><td>${fmtNum(r.ct,1)}</td><td>${fmtNum(r.aux,1)}</td><td>${fmtNum(r.totalPlant,1)}</td><td class="${ec}">${r.plantEff.toFixed(2)}</td></tr>`;
+    return`<tr><td>${fmtDate(r.dateSerial)}</td><td>${dot}${r.client}</td><td>${periodLabel(r.period)||r.period}</td><td>${fmtNum(r.cooling,1)}</td><td>${fmtNum(r.chiller,1)}</td><td>${fmtNum(r.chwp,1)}</td><td>${fmtNum(r.cwp,1)}</td><td>${fmtNum(r.ct,1)}</td><td>${fmtNum(r.aux,1)}</td><td>${fmtNum(r.totalPlant,1)}</td><td class="${ec}">${r.plantEff.toFixed(3)}</td></tr>`;
   }).join('');
 }
 
@@ -4487,28 +4626,84 @@ function sumMetrics(data){
 
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
 
-// Flat "Average" reference line across a weekly chart's whole x-axis, so a given week's
-// bar/point can be read against the period's mean at a glance — used on the Main CH,
-// CHWP, CWP and CT weekly charts (flow, approach, dT, setpoint, etc).
-function avgLineDataset(values,label,yAxisID){
-  const nums=values.filter(v=>v!=null&&!isNaN(v));
+// Flat reference line across a weekly chart's whole x-axis, so a given week's bar/point
+// can be read against a mean at a glance. `pointCount` sets how many points the flat line
+// is drawn across (normally the current month's week count), while the average itself is
+// computed from `sourceValues` — letting a "Last Month Average" line be computed from last
+// month's weeks but still stretch across however many weeks the current month's x-axis has.
+// The value is shown directly on the line (no hover needed) via a small pill-style data
+// label, AND read off `ds.data[0]` by the caller for the compact chip row under the chart
+// (renderAvgChips) — belt and suspenders, since some users want it on the curve and some
+// want the tidy summary row. `stackIndex` (0,1,2,...) — one per average line on the SAME
+// chart — spreads labels apart both horizontally (a different anchor point along the line)
+// and vertically (alternating above/below), so two close-together averages (e.g. this
+// month vs last month) don't print on top of each other. This on-chart label is only used
+// for single-axis charts; charts with two differently-scaled y-axes don't push these
+// datasets onto the chart at all (see chwp-setpoint/ct-tds render code), since a dashed
+// line's on-screen height stops meaning anything once two axes don't share a scale.
+function flatAvgLine(sourceValues,pointCount,label,yAxisID,color,stackIndex){
+  const nums=sourceValues.filter(v=>v!=null&&!isNaN(v));
   if(!nums.length)return null;
   const avg=nums.reduce((s,v)=>s+v,0)/nums.length;
+  const lineColor=color||'rgba(100,116,139,.75)';
+  const idx=stackIndex||0;
+  const fractions=[0.72,0.28,0.5];
+  const frac=fractions[idx%fractions.length];
+  const anchorIdx=pointCount>1?Math.round(frac*(pointCount-1)):0;
+  const alignDir=idx%2===0?'top':'bottom';
   const ds={
     label:label||'Average',
-    data:values.map(()=>+avg.toFixed(2)),
+    data:Array(pointCount).fill(+avg.toFixed(2)),
     type:'line',
-    borderColor:'rgba(100,116,139,.75)',
+    borderColor:lineColor,
     borderDash:[6,4],
     borderWidth:1.5,
     pointRadius:0,
     fill:false,
+    datalabels:{
+      display:(ctx)=>ctx.dataIndex===anchorIdx,
+      color:lineColor,
+      backgroundColor:'rgba(255,255,255,.9)',
+      borderRadius:3,
+      padding:{top:1,bottom:1,left:4,right:4},
+      font:{size:9,weight:'700'},
+      anchor:'center',
+      align:alignDir,
+      offset:4,
+      clamp:true,
+      clip:true,
+    },
   };
   if(yAxisID)ds.yAxisID=yAxisID;
   return ds;
 }
+// Renders a compact row of small pills under a weekly chart summarizing its average-line
+// values (a colored dot + label + number), instead of cluttering the chart itself with text.
+// `chips` is an array of {label, value, unit, color} — entries with a null/undefined value
+// (e.g. no "last month" data available) are skipped. `unit` is appended after the number.
+function renderAvgChips(containerId,chips){
+  const el=document.getElementById(containerId);
+  if(!el)return;
+  const valid=(chips||[]).filter(c=>c&&c.value!=null&&!isNaN(c.value));
+  if(!valid.length){el.innerHTML='';return;}
+  el.innerHTML=valid.map(c=>
+    '<span class="avg-chip"><span class="dot" style="background:'+(c.color||'#64748b')+'"></span>'+
+    c.label+': <span class="val">'+c.value+(c.unit||'')+'</span></span>'
+  ).join('');
+}
+// Used on the Main CH, CHWP, CWP and CT weekly charts (flow, approach, dT, setpoint, etc)
+// for the current month's own average line. Pass `stackIndex` (0,1,2,...) when a chart has
+// more than one average line, so their on-chart value labels don't overlap.
+function avgLineDataset(values,label,yAxisID,stackIndex){
+  return flatAvgLine(values,values.length,label,yAxisID,undefined,stackIndex);
+}
+// Same idea, but for a "Last Month Average" reference line: the average is computed from
+// last month's values while the line is drawn across the current month's week count.
+function lastAvgLineDataset(lastValues,pointCount,label,yAxisID,stackIndex){
+  return flatAvgLine(lastValues,pointCount,label,yAxisID,'rgba(217,119,6,.85)',stackIndex);
+}
 
-function chartOpts({y='',y2='',y2right=false}={}){
+function chartOpts({y='',y2='',y2right=false,y3='',y3right=false}={}){
   const base={
     responsive:true,maintainAspectRatio:false,
     plugins:{legend:{labels:{color:'#4a5568',font:{size:10},boxWidth:12}},tooltip:{mode:'index',intersect:false}},
@@ -4519,6 +4714,21 @@ function chartOpts({y='',y2='',y2right=false}={}){
   };
   if(y2right){
     base.scales.y2={position:'right',beginAtZero:false,title:{display:!!y2,text:y2,color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{drawOnChartArea:false}};
+  }
+  // Optional third axis (e.g. a "Δ %" curve running alongside a chart's main value curve) —
+  // Chart.js stacks it to the right of y2, offset outward automatically, with its own
+  // gridlines hidden so it doesn't lay a second grid on top of the primary one.
+  if(y3right){
+    base.scales.y3={position:'right',beginAtZero:false,title:{display:!!y3,text:y3,color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{drawOnChartArea:false}};
+  }
+  // Efficiency (kW/TR) values always display with 3 decimals in tooltips, even when
+  // the value rounds to a trailing zero (e.g. 0.650), which the raw plotted Number
+  // would otherwise silently drop to "0.65".
+  if(y2==='kW/TR'){
+    base.plugins.tooltip.callbacks={label:c=>{
+      const v=(c.dataset.yAxisID==='y2')?(+c.raw).toFixed(3):c.formattedValue;
+      return c.dataset.label+': '+v;
+    }};
   }
   return base;
 }
@@ -4684,10 +4894,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 /* KPI GRID */
 .kpi-grid{display:flex;flex-wrap:wrap;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;box-shadow:0 2px 8px rgba(10,61,124,.08)}
 .kpi{background:#fff;padding:18px 20px;flex:1 1 160px;overflow:hidden}
-#kpi-hotel{flex-wrap:nowrap}#kpi-hotel .kpi{flex:1 1 0;min-width:0;padding:14px 10px}
-.kpi-label{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;font-weight:600;overflow-wrap:break-word}
+#kpi-hotel{flex-wrap:wrap}#kpi-hotel .kpi{flex:1 1 130px;min-width:130px;padding:12px 12px}
+.kpi-label{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;font-weight:600;overflow-wrap:break-word;min-height:2.3em;display:flex;align-items:flex-start}
+#kpi-hotel .kpi-label{font-size:11px;word-break:keep-all;overflow-wrap:normal;letter-spacing:.2px;white-space:nowrap;min-height:0;display:block}
 .kpi-value{font-size:24px;font-weight:800;letter-spacing:-.5px;overflow-wrap:break-word;word-break:break-word}
-#kpi-hotel .kpi-value{font-size:clamp(13px,1.5vw,24px)}
+#kpi-hotel .kpi-value{font-size:clamp(15px,1.6vw,22px);white-space:nowrap}
 .kpi-unit{font-size:11px;color:var(--muted);margin-top:2px}
 .blue{color:var(--ses-blue)}.cyan{color:var(--ses-mid)}.purple{color:var(--ses-green)}.green{color:var(--ses-green)}.warn{color:var(--warn)}.bad{color:var(--bad)}
 
@@ -4696,9 +4907,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 .ashrae-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px}
 .ashrae-bar{position:relative;height:28px;border-radius:6px;overflow:hidden;display:flex}
 .ashrae-seg{flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
-.ashrae-needle-wrap{position:relative;height:16px;margin-top:4px}
-.ashrae-needle{position:absolute;width:2px;height:16px;background:var(--text);border-radius:1px;transform:translateX(-50%);transition:left .6s}
-.ashrae-needle::before{content:'▼';position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text)}
+.ashrae-bar-wrap{position:relative}
+.ashrae-needle{position:absolute;top:-5px;bottom:-5px;width:3px;background:#fff;border:1px solid rgba(0,0,0,.6);border-radius:2px;transform:translateX(-50%);transition:left .6s;box-shadow:0 0 3px rgba(0,0,0,.35);pointer-events:none;z-index:2}
+.ashrae-needle::after{content:'';position:absolute;top:-8px;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--text)}
 .ashrae-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px}
 .ashrae-value{font-size:20px;font-weight:800;margin-top:6px}
 .ashrae-zone{font-size:12px;font-weight:600;margin-top:2px}
@@ -5413,19 +5624,25 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
 
 <div id="page-monthly" class="page">
   <div class="section-title">Cooling as a Service — Project Parameters</div>
+  <div class="card" id="monthly-comment-card" style="margin-bottom:16px;display:none">
+    <div class="card-head"><div class="card-title">Client Comment — <span id="monthly-comment-period"></span></div></div>
+    <div class="card-body"><div id="monthly-comment-text" style="font-size:13px;color:var(--label);line-height:1.8;white-space:pre-line"></div></div>
+  </div>
   <div class="kpi-grid" id="kpi-monthly"></div>
 
   <div class="chart-grid grid-1-2" style="margin-bottom:16px">
     <div>
       <div class="ashrae-wrap">
         <div class="ashrae-title">ASHRAE Chiller Plant Efficiency Benchmark</div>
-        <div class="ashrae-bar">
-          <div class="ashrae-seg" style="background:#1a6b3a">EXCELLENT</div>
-          <div class="ashrae-seg" style="background:#2d8a4e">GOOD</div>
-          <div class="ashrae-seg" style="background:#d97706">FAIR</div>
-          <div class="ashrae-seg" style="background:#dc2626">NEED IMP.</div>
+        <div class="ashrae-bar-wrap">
+          <div class="ashrae-bar">
+            <div class="ashrae-seg" style="background:#1a6b3a">EXCELLENT</div>
+            <div class="ashrae-seg" style="background:#2d8a4e">GOOD</div>
+            <div class="ashrae-seg" style="background:#d97706">FAIR</div>
+            <div class="ashrae-seg" style="background:#dc2626">NEED IMP.</div>
+          </div>
+          <div class="ashrae-needle" id="ashrae-needle" style="left:50%"></div>
         </div>
-        <div class="ashrae-needle-wrap"><div class="ashrae-needle" id="ashrae-needle" style="left:50%"></div></div>
         <div class="ashrae-labels"><span>0.5</span><span>0.7</span><span>0.9</span><span>1.1</span><span>1.2</span></div>
         <div class="ashrae-value blue" id="ashrae-val">—</div>
         <div class="ashrae-zone" id="ashrae-zone"></div>
@@ -5482,12 +5699,6 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
   <div class="card" id="card-yearly-room" style="margin-bottom:16px">
     <div class="card-head"><div class="card-title" id="yearly-room-title">Cooling per Room &amp; Energy per Room — per Month</div></div>
     <div class="card-body"><div class="chart-h180"><canvas id="chart-yearly-room"></canvas></div></div>
-  </div>
-  <div class="card">
-    <div class="card-head"><div class="card-title">General Comments</div></div>
-    <div class="card-body">
-      <div id="comments-list" style="font-size:12px;color:var(--label);line-height:1.8"></div>
-    </div>
   </div>
 </div>
 
@@ -5619,6 +5830,15 @@ function chartOpts({y='',y2='',y2right=false}={}){
   if(y2right){
     base.scales.y2={position:'right',beginAtZero:false,title:{display:!!y2,text:y2,color:'#4a5568',font:{size:10}},ticks:{color:'#64748b',font:{size:10}},grid:{drawOnChartArea:false}};
   }
+  // Efficiency (kW/TR) values always display with 3 decimals in tooltips, even when
+  // the value rounds to a trailing zero (e.g. 0.650), which the raw plotted Number
+  // would otherwise silently drop to "0.65".
+  if(y2==='kW/TR'){
+    base.plugins.tooltip.callbacks={label:c=>{
+      const v=(c.dataset.yAxisID==='y2')?(+c.raw).toFixed(3):c.formattedValue;
+      return c.dataset.label+': '+v;
+    }};
+  }
   return base;
 }
 function sumMetrics(data){
@@ -5714,14 +5934,29 @@ function renderMonthly(){
   if(!filteredData.flatMap(d=>d.billing).length)return;
   const s=computeMonthlyStats(filteredData);
 
+  // Client comment for the current month only
+  {
+    const sortedFD=filteredData.slice().sort((a,b)=>a.period.localeCompare(b.period));
+    const curData=sortedFD[sortedFD.length-1];
+    const clientComment=curData?(curData.comments||[]).find(c=>c.type==='client'):null;
+    const ccCard=document.getElementById('monthly-comment-card');
+    if(clientComment){
+      ccCard.style.display='';
+      document.getElementById('monthly-comment-period').textContent=periodLabel(curData.period)||curData.period;
+      document.getElementById('monthly-comment-text').textContent=clientComment.text;
+    } else {
+      ccCard.style.display='none';
+    }
+  }
+
   document.getElementById('kpi-monthly').innerHTML=
     '<div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">'+fmtCompact(s.totalCooling,0)+'</div><div class="kpi-unit">TRh</div></div>'+
     '<div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">'+fmtCompact(s.totalPlant,0)+'</div><div class="kpi-unit">kWh</div></div>'+
     '<div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">'+fmtCompact(s.elecSavings,0)+'</div><div class="kpi-unit">kWh</div></div>'+
     '<div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">'+fmt4(s.co2)+'</div><div class="kpi-unit">Tons of CO₂e</div></div>'+
     '<div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">'+fmtCompact(s.trees,0)+'</div><div class="kpi-unit">Trees 🌳</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmt4(s.metrics.oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">'+fmt4(s.avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>';
+    '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmtEff3(s.metrics.oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Current Plant Eff.</div><div class="kpi-value purple">'+fmtEff3(s.avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>';
 
   const hotelEl=document.getElementById('kpi-hotel');
   const ft=FACILITY_TYPES[CLIENT_FACILITY_TYPE]||FACILITY_TYPES.hotel;
@@ -5731,7 +5966,7 @@ function renderMonthly(){
     hotelEl.innerHTML=
       '<div class="kpi"><div class="kpi-label">'+ft.metricLabel+'</div><div class="kpi-value">'+fmtNum(s.metrics.rns)+'</div><div class="kpi-unit">'+ft.metricAbbr+' / '+ft.maxLabel+' '+fmtNum(s.metrics.maxRns)+'</div></div>'+
       '<div class="kpi"><div class="kpi-label">'+ft.utilLabel+'</div><div class="kpi-value">'+(occPct!=null?fmtNum(occPct,0)+'%':'—')+'</div><div class="kpi-unit">of full '+ft.utilLabel.toLowerCase()+'</div></div>'+
-      '<div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">'+fmtCompact(s.metrics.totalElec)+'</div><div class="kpi-unit">kWh</div></div>'+
+      '<div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">'+fmtCompact(s.metrics.totalElec,0)+'</div><div class="kpi-unit">kWh</div></div>'+
       '<div class="kpi"><div class="kpi-label">Cooling / '+ft.metricAbbr+'</div><div class="kpi-value">'+fmt4(s.coolingPerRoom)+'</div><div class="kpi-unit">TRh/'+ft.metricAbbr+'</div></div>'+
       '<div class="kpi"><div class="kpi-label">Energy / '+ft.metricAbbr+'</div><div class="kpi-value">'+fmt4(s.energyPerRoom)+'</div><div class="kpi-unit">kWh/'+ft.metricAbbr+'</div></div>';
   } else {
@@ -5740,7 +5975,7 @@ function renderMonthly(){
   }
 
   document.getElementById('ashrae-needle').style.left=s.ashraeNeedlePct+'%';
-  document.getElementById('ashrae-val').textContent=fmtNum(s.avgEff,2)+' kW/TR';
+  document.getElementById('ashrae-val').textContent=fmtNum(s.avgEff,3)+' kW/TR';
   const zEl=document.getElementById('ashrae-zone');
   zEl.textContent=s.ashraeZone;zEl.style.color=s.ashraeColor;
 
@@ -5751,8 +5986,8 @@ function renderMonthly(){
     charts['weekly']=new Chart(document.getElementById('chart-weekly').getContext('2d'),{
       type:'bar',data:{labels:allWeekly.map(w=>(w.period?w.period.split('-').reverse().join('/'):'')+' '+w.week),datasets:[
         {label:'Cooling Load (TR)',data:allWeekly.map(w=>+w.coolingLoad.toFixed(1)),backgroundColor:'rgba(59,130,246,.6)',borderRadius:4,yAxisID:'y'},
-        {label:'Plant Eff (kW/TR)',data:allWeekly.map(w=>+w.plantEff.toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-        {label:'Chiller Eff (kW/TR)',data:allWeekly.map(w=>+w.chillerEff.toFixed(2)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Plant Eff (kW/TR)',data:allWeekly.map(w=>+w.plantEff.toFixed(3)),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Chiller Eff (kW/TR)',data:allWeekly.map(w=>+w.chillerEff.toFixed(3)),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
       ]},options:chartOpts({y:'TR',y2:'kW/TR',y2right:true})
     });
   }
@@ -5858,12 +6093,6 @@ function renderYearly(){
       ]},options:chartOpts({y:'TRh/'+ftY.metricAbbr,y2:'kWh/'+ftY.metricAbbr,y2right:true})
     });
   }
-
-  // Comments — most recent month first, so the list reads as a quick-context summary
-  const comments=filteredData.slice().sort((a,b)=>b.period.localeCompare(a.period)).flatMap(d=>d.comments||[]);
-  const cl=document.getElementById('comments-list');
-  if(comments.length){cl.innerHTML=comments.map(c=>'<div style="margin-bottom:6px;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--accent)">— '+c.text+'</div>').join('')}
-  else{cl.innerHTML='<div style="color:var(--muted)">No comments found in loaded files.</div>'}
 }
 
 // ── Init ────────────────────────────────────────────
