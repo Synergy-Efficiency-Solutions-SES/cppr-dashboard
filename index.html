@@ -1843,7 +1843,25 @@ async function collectFromEntry(entry,result,inheritedClient){
     else{for(const s of subs)await collectFromEntry(s,result,inheritedClient)}
   }
 }
+// Best-effort client name straight from the filename, for when no folder name was
+// available to tell us the client (a loose file/drop, or a multi-file picker dialog —
+// browsers never expose which folder those came from, only an actual folder drop/picker
+// does). These report filenames follow "<year> <month> - CPPR - <Client>- v<N>.xlsx"
+// (spacing around the dashes varies a bit — "Mustika- v2" vs "Mustika - v1"), so pull
+// out whatever sits between "CPPR -" and the trailing "- v<N>" version tag.
+function guessClientFromFilename(filename){
+  const base=filename.replace(/\.xlsx?$/i,'');
+  const m=base.match(/CPPR\s*-\s*(.+?)\s*-\s*v\d+\s*$/i);
+  const name=m&&m[1]?m[1].trim():'';
+  return name||null;
+}
 function addFile(file,client){
+  // Only guess from the filename when the caller had no real folder-based name to give us
+  // — a folder name (from a folder drop/picker) is trusted over a filename guess.
+  if(client==='Inconnu'){
+    const guessed=guessClientFromFilename(file.name);
+    if(guessed) client=guessed;
+  }
   if(pendingFiles.find(p=>p.file.name===file.name&&p.client===client))return;
   pendingFiles.push({file,client});
 }
@@ -4831,7 +4849,14 @@ function resetDashboard(){
 function exportClientView(){
   if(!allData.length){ alert('No data loaded.'); return; }
 
-  const clientName=[...new Set(allData.map(d=>d.client))].filter(Boolean).join(', ') || 'Client';
+  // 'Inconnu' is just the fallback tag for a file that was loaded loose (not inside a
+  // client-named folder) — it's not a real client name, so when the loaded data also
+  // includes at least one file that DOES have a real client name, drop 'Inconnu' from the
+  // export name entirely rather than joining it in (e.g. "Inconnu, Mustika" → "Mustika").
+  // Only fall back to showing 'Inconnu' itself when no real client name was found at all.
+  const rawClients=[...new Set(allData.map(d=>d.client))].filter(Boolean);
+  const namedClients=rawClients.filter(c=>c!=='Inconnu');
+  const clientName=(namedClients.length?namedClients:rawClients).join(', ') || 'Client';
   const baseName=clientName.toLowerCase().replace(/[^a-z0-9]/g,'-');
   // Same token every time for the same client — see clientExportToken() above.
   const safeName=baseName+'-'+clientExportToken(clientName);
