@@ -100,10 +100,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 
 /* KPI GRID */
 .kpi-grid{display:flex;flex-wrap:wrap;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;box-shadow:0 2px 8px rgba(10,61,124,.08)}
-.kpi{background:#fff;padding:18px 20px;flex:1 1 160px}
-#kpi-hotel{flex-wrap:nowrap}#kpi-hotel .kpi{flex:1 1 0;min-width:0}
-.kpi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;font-weight:600}
-.kpi-value{font-size:24px;font-weight:800;letter-spacing:-.5px}
+.kpi{background:#fff;padding:18px 20px;flex:1 1 160px;overflow:hidden}
+#kpi-hotel{flex-wrap:nowrap}#kpi-hotel .kpi{flex:1 1 0;min-width:0;padding:14px 10px}
+.kpi-label{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;font-weight:600;overflow-wrap:break-word}
+.kpi-value{font-size:24px;font-weight:800;letter-spacing:-.5px;overflow-wrap:break-word;word-break:break-word}
+#kpi-hotel .kpi-value{font-size:clamp(13px,1.5vw,24px)}
 .kpi-unit{font-size:11px;color:var(--muted);margin-top:2px}
 .kpi-sub{font-size:11px;margin-top:3px}
 .blue{color:var(--ses-blue)}.cyan{color:var(--ses-mid)}.purple{color:var(--ses-green)}.green{color:var(--ses-green)}.warn{color:var(--warn)}.bad{color:var(--bad)}
@@ -871,7 +872,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <button class="page-tab" onclick="showPage('chwp')">CHWP</button>
       <button class="page-tab" onclick="showPage('cwp')">CWP</button>
       <button class="page-tab" onclick="showPage('ct')">CT</button>
-      <button class="page-tab" onclick="showPage('pumphealth')">Pump Health</button>
+      <button class="page-tab" onclick="showPage('pumphealth')">Equipment Health</button>
       <button class="page-tab" onclick="showPage('comments')">Comments</button>
       <button class="page-tab" onclick="showPage('weekly')">Weekly Trend</button>
       <button class="page-tab" onclick="showPage('trending')">Trending</button>
@@ -936,7 +937,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
     </div>
     <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
       Compare to:
-      <select id="sel-compare-to" onchange="onCompareToChange()" title="Applies everywhere a 'Last Month' comparison line is shown (Chiller Plant, Main CH, CHWP, CWP, CT, Pump Health). Defaults to the chronologically-previous month.">
+      <select id="sel-compare-to" onchange="onCompareToChange()" title="Applies everywhere a 'Last Month' comparison line is shown (Chiller Plant, Main CH, CHWP, CWP, CT, Equipment Health). Defaults to the chronologically-previous month.">
         <option value="">Previous month (default)</option>
       </select>
     </span>
@@ -1011,7 +1012,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <div onclick="if(filteredData&&filteredData.length){showPageByName('pumphealth')}" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 6px rgba(10,61,124,.05)" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10,61,124,.12)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(10,61,124,.05)'">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
             <div style="width:36px;height:36px;background:#1a5fa318;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">⚙️</div>
-            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Pump Health</div>
+            <div style="font-weight:700;color:var(--ses-dark);font-size:13px">Equipment Health</div>
           </div>
           <div style="font-size:11px;color:var(--muted);line-height:1.6">CHWP & CWP motor frequency distribution, power, flow & head</div>
         </div>
@@ -1198,6 +1199,8 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <option value="">All Chillers</option>
       </select>
     </div>
+    <!-- Primary chiller (CH1) spans the full width, across both graph-slots -->
+    <div id="mainch-ch1-row" style="margin-bottom:16px"></div>
     <div class="chart-grid grid-2" id="main-ch-grid" style="margin-bottom:16px">
       <div id="chillers-container"></div>
       <div style="display:flex;flex-direction:column;gap:12px">
@@ -1333,7 +1336,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <option value="">All CHWP (merged)</option>
       </select>
     </div>
-    <div class="chart-grid grid-3" style="margin-bottom:16px">
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
       <div class="card">
         <div class="card-head"><div class="card-title">CHWP Power</div><div class="card-sub">Occurrence % + Input & Hydraulic Power (kW) — Current + Last Month</div></div>
         <div class="card-body"><div class="chart-h260"><canvas id="chart-chwp-health-power"></canvas></div></div>
@@ -1358,7 +1361,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <option value="">All CWP (merged)</option>
       </select>
     </div>
-    <div class="chart-grid grid-3" style="margin-bottom:16px">
+    <div class="chart-grid grid-2" style="margin-bottom:16px">
       <div class="card">
         <div class="card-head"><div class="card-title">CWP Power</div><div class="card-sub">Occurrence % + Input & Hydraulic Power (kW) — Current + Last Month</div></div>
         <div class="card-body"><div class="chart-h260"><canvas id="chart-cwp-health-power"></canvas></div></div>
@@ -1383,7 +1386,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <option value="">All CT (merged)</option>
       </select>
     </div>
-    <div class="chart-grid grid-3">
+    <div class="chart-grid grid-2">
       <div class="card">
         <div class="card-head"><div class="card-title">CT Power</div><div class="card-sub">Occurrence % + Input Power (kW) — Current + Last Month</div></div>
         <div class="card-body"><div class="chart-h260"><canvas id="chart-ct-health-power"></canvas></div></div>
@@ -1726,11 +1729,11 @@ const CLIENT_COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef444
 // data is parsed or computed. Only the labels/units shown change based on this selection,
 // which you set manually per client (there is no "facility type" field in the Excel template).
 const FACILITY_TYPES = {
-  hotel:    { name:'Hotel',    metricLabel:'Room Nights Sold', metricAbbr:'RNS',       maxLabel:'Max RNS' },
-  hospital: { name:'Hospital', metricLabel:'Patient Days',     metricAbbr:'Patient-Days', maxLabel:'Max Patient-Days' },
-  mall:     { name:'Mall',     metricLabel:'Visitor Count',    metricAbbr:'Visitors',  maxLabel:'Max Visitors' },
-  office:   { name:'Office',   metricLabel:'Employee Count',   metricAbbr:'Employees', maxLabel:'Max Employees' },
-  factory:  { name:'Factory',  metricLabel:'Ton Production',   metricAbbr:'Tons',      maxLabel:'Max Production' },
+  hotel:    { name:'Hotel',    metricLabel:'Room Nights Sold', metricAbbr:'RNS',       maxLabel:'Max RNS',          utilLabel:'Occupancy' },
+  hospital: { name:'Hospital', metricLabel:'Patient Days',     metricAbbr:'Patient-Days', maxLabel:'Max Patient-Days', utilLabel:'Occupancy' },
+  mall:     { name:'Mall',     metricLabel:'Visitor Count',    metricAbbr:'Visitors',  maxLabel:'Max Visitors',     utilLabel:'Traffic vs Capacity' },
+  office:   { name:'Office',   metricLabel:'Employee Count',   metricAbbr:'Employees', maxLabel:'Max Employees',    utilLabel:'Occupancy' },
+  factory:  { name:'Factory',  metricLabel:'Ton Production',   metricAbbr:'Tons',      maxLabel:'Max Production',   utilLabel:'Capacity Utilization' },
 };
 const clientColorMap = {};
 let colorIdx = 0;
@@ -1901,6 +1904,14 @@ function fmt4(n){
   if(n==null||isNaN(n))return'—';
   return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
+// kW/TR efficiency values specifically get 3 decimals throughout the Yearly tab
+// (kW/TR differences are small — 2 decimals hid real month-to-month movement).
+// Named distinctly from renderDetailed()'s local 2-decimal `fmtEff` helper, to
+// avoid two same-named formatters with different precision in the same file.
+function fmtEff3(n){
+  if(n==null||isNaN(n))return'—';
+  return n.toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3});
+}
 function fmtBig(n){
   if(n==null||isNaN(n))return'—';
   return Math.round(n).toLocaleString('en-US');
@@ -1913,6 +1924,22 @@ function fmtCompact(n,dec=2){
   const abs=Math.abs(n);
   if(abs>=1e6)return(n/1e6).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec})+'M';
   return fmtNum(n,dec);
+}
+// The ASHRAE bar is drawn as 4 EQUAL-WIDTH segments (25% each) but they cover
+// unequal kW/TR ranges (0.5–0.7, 0.7–0.9, 0.9–1.1, 1.1–1.2+), so a single
+// linear interpolation across 0.5–1.2 puts the needle out of sync with the
+// visible zone boundaries. Map piecewise instead, so e.g. eff=0.9 (the
+// Good/Fair boundary) always lands exactly at the 50% mark under the bar.
+function ashraeNeedlePos(eff){
+  const bounds=[0.5,0.7,0.9,1.1,1.2]; // value at each 25% tick: 0,25,50,75,100
+  if(eff<=bounds[0])return 0;
+  if(eff>=bounds[4])return 100;
+  for(let i=0;i<4;i++){
+    if(eff<=bounds[i+1]){
+      return i*25+(eff-bounds[i])/(bounds[i+1]-bounds[i])*25;
+    }
+  }
+  return 100;
 }
 function period(s){const d=serial2date(s);if(!d)return null;const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');return y+'-'+m}
 function periodLabel(p){if(!p||p==='—')return p;const[y,mo]=p.split('-');const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return(mn[parseInt(mo,10)-1]||mo)+' '+y}
@@ -2253,7 +2280,11 @@ async function buildDashboard(){
   const years=[...new Set(periods.map(p=>p.split('-')[0]))].sort();
   const selY=document.getElementById('sel-year');
   selY.innerHTML='<option value="">All Years</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
-  buildMonthPills(periods,null); // null = all selected by default
+  // Default to the most recent month only (not "All Months") so the dashboard opens
+  // straight onto current performance — the user can switch back to "All Months" or
+  // pick a range whenever a page (like Yearly) calls for the full trend instead.
+  const latestPeriod=periods[periods.length-1];
+  buildMonthPills(periods,latestPeriod?[latestPeriod]:null);
 
   // Show client name badge
   const clientNames=[...new Set(allData.map(d=>d.client))].filter(c=>c&&c!=='Inconnu');
@@ -2440,7 +2471,7 @@ function computeMonthlyStats(dataSubset){
 
   // ASHRAE gauge zone (0.5=excellent, 0.7=good, 0.9=fair, 1.2=need improvement)
   const eff=avgEff;
-  const ashraeNeedlePct=Math.min(100,Math.max(0,(eff-0.5)/(1.2-0.5)*100));
+  const ashraeNeedlePct=ashraeNeedlePos(eff);
   let ashraeZone='',ashraeColor='';
   if(eff<0.7){ashraeZone='EXCELLENT';ashraeColor='var(--good)'}
   else if(eff<0.9){ashraeZone='GOOD';ashraeColor='#2d8a4e'}
@@ -2472,9 +2503,9 @@ function renderMonthly(){
   const s=computeMonthlyStats(filteredData);
 
   document.getElementById('kpi-monthly').innerHTML=`
-    <div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">${fmtCompact(s.totalCooling)}</div><div class="kpi-unit">TRh</div></div>
-    <div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">${fmtCompact(s.totalPlant)}</div><div class="kpi-unit">kWh</div></div>
-    <div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">${fmtCompact(s.elecSavings)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">${fmtCompact(s.totalCooling,0)}</div><div class="kpi-unit">TRh</div></div>
+    <div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">${fmtCompact(s.totalPlant,0)}</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">${fmtCompact(s.elecSavings,0)}</div><div class="kpi-unit">kWh</div></div>
     <div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">${fmt4(s.co2)}</div><div class="kpi-unit">Tons of CO₂e</div></div>
     <div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">${fmtCompact(s.trees,0)}</div><div class="kpi-unit">Trees 🌳</div></div>
     <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmt4(s.metrics.oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
@@ -2485,8 +2516,10 @@ function renderMonthly(){
   const ft=FACILITY_TYPES[selectedFacilityType]||FACILITY_TYPES.hotel;
   if(s.metrics.rns>0){
     hotelEl.style.display='flex';
+    const occPct=s.metrics.maxRns>0?(s.metrics.rns/s.metrics.maxRns*100):null;
     hotelEl.innerHTML=`
       <div class="kpi"><div class="kpi-label">${ft.metricLabel}</div><div class="kpi-value">${fmtNum(s.metrics.rns)}</div><div class="kpi-unit">${ft.metricAbbr} / ${ft.maxLabel} ${fmtNum(s.metrics.maxRns)}</div></div>
+      <div class="kpi"><div class="kpi-label">${ft.utilLabel}</div><div class="kpi-value">${occPct!=null?fmtNum(occPct,0)+'%':'—'}</div><div class="kpi-unit">of full ${ft.utilLabel.toLowerCase()}</div></div>
       <div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">${fmtCompact(s.metrics.totalElec)}</div><div class="kpi-unit">kWh</div></div>
       <div class="kpi"><div class="kpi-label">Cooling / ${ft.metricAbbr}</div><div class="kpi-value">${fmt4(s.coolingPerRoom)}</div><div class="kpi-unit">TRh/${ft.metricAbbr}</div></div>
       <div class="kpi"><div class="kpi-label">Energy / ${ft.metricAbbr}</div><div class="kpi-value">${fmt4(s.energyPerRoom)}</div><div class="kpi-unit">kWh/${ft.metricAbbr}</div></div>
@@ -2594,8 +2627,8 @@ function renderYearly(){
   const{periods,labels}=s;
 
   document.getElementById('kpi-yearly').innerHTML=`
-    <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmt4(s.oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
-    <div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">${fmt4(s.avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">${fmtEff3(s.oldEff)}</div><div class="kpi-unit">kW/TR</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">${fmtEff3(s.avgEff)}</div><div class="kpi-unit">kW/TR</div></div>
     <div class="kpi"><div class="kpi-label">Avg Saving</div><div class="kpi-value green">${s.avgSavingsPct} %</div><div class="kpi-unit">vs old system</div></div>
     <div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">${fmtCompact(s.totCooling)}</div><div class="kpi-unit">TRh</div></div>
     <div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">${fmtCompact(s.totElecSavings)}</div><div class="kpi-unit">kWh</div></div>
@@ -2624,11 +2657,18 @@ function renderYearly(){
       labels,
       datasets:[
         {label:'Cooling Load (TRh)',data:periods.map(p=>+p.billing.reduce((s,r)=>s+r.cooling,0).toFixed(0)),backgroundColor:'rgba(59,130,246,.5)',borderRadius:3,yAxisID:'y'},
-        {label:'Plant Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;const tc=b.reduce((s,r)=>s+r.cooling,0);const tp=b.reduce((s,r)=>s+r.totalPlant,0);return tc>0?+(tp/tc).toFixed(2):0}),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-        {label:'Chiller Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;return b.length?+(b.reduce((s,r)=>s+r.chillerEff,0)/b.length).toFixed(2):0}),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Plant Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;const tc=b.reduce((s,r)=>s+r.cooling,0);const tp=b.reduce((s,r)=>s+r.totalPlant,0);return tc>0?+(tp/tc).toFixed(3):0}),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+        {label:'Chiller Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;return b.length?+(b.reduce((s,r)=>s+r.chillerEff,0)/b.length).toFixed(3):0}),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
       ]
     },
-    options:chartOpts({y:'TRh',y2:'kW/TR',y2right:true})
+    options:{
+      ...chartOpts({y:'TRh',y2:'kW/TR',y2right:true}),
+      // Force 3 decimals in the tooltip for the kW/TR lines specifically — the
+      // raw numbers already carry 3 decimals, but a trailing zero (e.g. 0.660)
+      // is silently dropped once stored as a plain Number, so the default
+      // tooltip formatting alone can't be trusted to show all 3 digits.
+      plugins:{tooltip:{callbacks:{label:c=>c.dataset.yAxisID==='y2'?`${c.dataset.label}: ${fmtEff3(c.raw)}`:`${c.dataset.label}: ${c.raw}`}}}
+    }
   });
 
   // Per room
@@ -2652,8 +2692,8 @@ function renderYearly(){
     });
   }
 
-  // Comments
-  const comments=filteredData.flatMap(d=>d.comments);
+  // Comments — most recent month first, so the list reads as a quick-context summary
+  const comments=filteredData.slice().sort((a,b)=>b.period.localeCompare(a.period)).flatMap(d=>d.comments);
   const cl=document.getElementById('comments-list');
   if(comments.length){cl.innerHTML=comments.map(c=>`<div style="margin-bottom:6px;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--accent)">— ${c.text}</div>`).join('')}
   else{cl.innerHTML='<div style="color:var(--muted)">No comments found in loaded files.</div>'}
@@ -2794,14 +2834,17 @@ function renderDetailed(){
   const v2full=p2data.length?effBreakdownTotal(p2data):null;
   const kpiEl=document.getElementById('eff-shift-kpis');
   if(kpiEl&&v1full&&v2full){
-    // Power BI formula:
-    // Efficiency Increase = ABS(thisEff) - lastEff
-    // % Total = Efficiency Increase / thisEff
-    // Same logic per component: diff = this[i] - last[i], pct = diff / this[i]
+    // Sign convention (matches the per-component badges below): diff = this - last,
+    // divided by LAST month. Positive = kW/TR went UP = efficiency got WORSE, so it
+    // always displays as "+", regardless of whether the underlying number decreased.
+    // (Previously the Total badge used the opposite convention — this-month minus
+    // last-month reversed, divided by this month — which silently flipped its sign
+    // relative to the per-component badges: e.g. kW/TR going 0.64→0.66, a real
+    // ~+3.1% worsening, displayed as "-3.19%".)
     const totalV2=v2full.reduce((s,v)=>s+v,0); // this month total eff
     const totalV1=v1full.reduce((s,v)=>s+v,0); // last month total eff
-    const totalDiff=totalV1-totalV2; // improvement = positive when this month is LOWER (better efficiency)
-    const totalPct=totalV2>0?(totalDiff/totalV2*100):0; // divide by THIS month
+    const totalDiff=totalV2-totalV1; // positive = this month worse (higher kW/TR)
+    const totalPct=totalV1>0?(totalDiff/totalV1*100):0; // divide by LAST month
     const colors=['#1e3a6e','#3b82f6','#06b6d4','#10b981','#f59e0b'];
     kpiEl.innerHTML=keys.map((k,i)=>{
       const diff=v2full[i]-v1full[i];
@@ -2813,7 +2856,7 @@ function renderDetailed(){
       </div>`;
     }).join('')+`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center">
       <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Total<br>kW/TR</div>
-      <div style="font-size:13px;font-weight:800;color:${totalDiff>=0?'var(--good)':'var(--bad)'};margin-top:4px">${totalDiff>=0?'+':''}${totalPct.toFixed(2)}%</div>
+      <div style="font-size:13px;font-weight:800;color:${totalDiff<=0?'var(--good)':'var(--bad)'};margin-top:4px">${totalDiff>=0?'+':''}${totalPct.toFixed(2)}%</div>
     </div>`;
 
     // Waterfall chart
@@ -2971,24 +3014,23 @@ function renderMainCH(){
   }
 
   if(!allChillerNames.length) return;
-  // Resize grid: single CH selected → full width for Part Load chart
   const grid=document.getElementById('main-ch-grid');
-  if(grid){
-    if(selectedCH){
-      grid.style.gridTemplateColumns='1fr 1fr'; // bigger left, right still visible
-      container.style.gridColumn='1';
-    } else {
-      grid.style.gridTemplateColumns='1fr 1fr';
-      container.style.gridColumn='';
-    }
-  }
+  if(grid){grid.style.gridTemplateColumns='1fr 1fr';container.style.gridColumn='';}
 
-  const chartH=selectedCH?'chart-h300':'chart-h260';
-  container.innerHTML=`<div class="${selectedCH?'':'chart-grid grid-2'}" style="${selectedCH?'':''}"> ${visibleChillers.map(cn=>{
+  // Primary chiller (CH1, or whichever sorts first / is selected in the dropdown)
+  // gets its own full-width row spanning both graph-slots at the top; any other
+  // chillers (CH2, CH3, ...) are arranged below, alongside Approach/Flow.
+  const primaryCH=visibleChillers[0];
+  const restChillers=visibleChillers.slice(1);
+  const buildChCard=(cn,tall)=>{
     const id='chart-ch-'+cn.replace(/\s/g,'-');
-    return `<div class="card"><div class="card-head"><div class="card-title">${cn} VS Specification</div><div class="card-sub">Part Load — Current + Last Month + Last 2 Month</div></div><div class="card-body"><div class="${chartH}"><canvas id="${id}"></canvas></div></div></div>`;
-  }).join('')}</div>`;
-  visibleChillers.forEach(cn=>{
+    return `<div class="card"><div class="card-head"><div class="card-title">${cn} VS Specification</div><div class="card-sub">Part Load — Current + Last Month + Last 2 Month</div></div><div class="card-body"><div class="${tall?'chart-h300':'chart-h260'}"><canvas id="${id}"></canvas></div></div></div>`;
+  };
+  const ch1Row=document.getElementById('mainch-ch1-row');
+  if(ch1Row) ch1Row.innerHTML=primaryCH?buildChCard(primaryCH,true):'';
+  container.innerHTML=restChillers.length?`<div class="${restChillers.length>1?'chart-grid grid-2':''}">${restChillers.map(cn=>buildChCard(cn,false)).join('')}</div>`:'';
+
+  [primaryCH,...restChillers].filter(Boolean).forEach(cn=>{
     const id='chart-ch-'+cn.replace(/\s/g,'-');
     const curr=thisData.flatMap(d=>(d.chillerSheets||{})[cn]||[]);
     const last=lastPer?allData.filter(d=>(!client||d.client===client)&&d.period===lastPer).flatMap(d=>(d.chillerSheets||{})[cn]||[]):[];
@@ -3121,33 +3163,41 @@ function renderCHWP(){
   // CHW Flow weekly
   destroyChart('chwp-flow');
   if(weekly.length){
+    const flowVals=weekly.map(w=>+w.chwFlow.toFixed(2));
+    const ds=[{label:'CHW Flow (LPS)',data:flowVals,backgroundColor:'rgba(6,182,212,.6)',borderRadius:3}];
+    const avgDs=avgLineDataset(flowVals,'Average (LPS)');if(avgDs)ds.push(avgDs);
     charts['chwp-flow']=new Chart(document.getElementById('chart-chwp-flow').getContext('2d'),{
       type:'bar',
-      data:{labels:weekly.map(w=>w.yearWeek||w.week),
-        datasets:[{label:'CHW Flow (LPS)',data:weekly.map(w=>+w.chwFlow.toFixed(2)),backgroundColor:'rgba(6,182,212,.6)',borderRadius:3}]},
+      data:{labels:weekly.map(w=>w.yearWeek||w.week),datasets:ds},
       options:{...chartOpts({y:'LPS'}),plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}},tooltip:{mode:'index',intersect:false}}}
     });
   }
   // Evaporator Approach weekly
   destroyChart('evap-approach');
   if(weekly.length){
+    const appVals=weekly.map(w=>+w.evapApproach.toFixed(2));
+    const ds=[{label:'Evaporator Approach (°C)',data:appVals,backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}];
+    const avgDs=avgLineDataset(appVals,'Average (°C)');if(avgDs)ds.push(avgDs);
     charts['evap-approach']=new Chart(document.getElementById('chart-evap-approach').getContext('2d'),{
       type:'bar',
-      data:{labels:weekly.map(w=>w.yearWeek||w.week),
-        datasets:[{label:'Evaporator Approach (°C)',data:weekly.map(w=>+w.evapApproach.toFixed(2)),backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}]},
+      data:{labels:weekly.map(w=>w.yearWeek||w.week),datasets:ds},
       options:chartOpts({y:'°C'})
     });
   }
   // Setpoint & dT weekly
   destroyChart('chwp-setpoint');
   if(weekly.length){
+    const spVals=weekly.map(w=>+w.setPoint.toFixed(2));
+    const dtVals=weekly.map(w=>+w.dT.toFixed(2));
+    const ds=[
+      {label:'Set Point (°C)',data:spVals,borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
+      {label:'Delta T (°C)',data:dtVals,borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+    ];
+    const spAvg=avgLineDataset(spVals,'Set Point Average');if(spAvg)ds.push(spAvg);
+    const dtAvg=avgLineDataset(dtVals,'Delta T Average','y2');if(dtAvg)ds.push(dtAvg);
     charts['chwp-setpoint']=new Chart(document.getElementById('chart-chwp-setpoint').getContext('2d'),{
       type:'line',
-      data:{labels:weekly.map(w=>w.yearWeek||w.week),
-        datasets:[
-          {label:'Set Point (°C)',data:weekly.map(w=>+w.setPoint.toFixed(2)),borderColor:'#3b82f6',pointRadius:4,borderWidth:2,fill:false},
-          {label:'Delta T (°C)',data:weekly.map(w=>+w.dT.toFixed(2)),borderColor:'#06b6d4',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-        ]},
+      data:{labels:weekly.map(w=>w.yearWeek||w.week),datasets:ds},
       options:chartOpts({y:'°C (SP)',y2:'°C (dT)',y2right:true})
     });
   }
@@ -3197,17 +3247,21 @@ function renderCWP(){
   }
   destroyChart('cwp-flow');
   if(weekly.length){
+    const flowVals=weekly.map(w=>+w.cwFlow.toFixed(2));
+    const ds=[{label:'CW Flow (LPS)',data:flowVals,backgroundColor:'rgba(16,185,129,.6)',borderRadius:3}];
+    const avgDs=avgLineDataset(flowVals,'Average (LPS)');if(avgDs)ds.push(avgDs);
     charts['cwp-flow']=new Chart(document.getElementById('chart-cwp-flow').getContext('2d'),{
-      type:'bar',data:{labels:weekly.map(w=>w.yearWeek||w.week),
-        datasets:[{label:'CW Flow (LPS)',data:weekly.map(w=>+w.cwFlow.toFixed(2)),backgroundColor:'rgba(16,185,129,.6)',borderRadius:3}]},
+      type:'bar',data:{labels:weekly.map(w=>w.yearWeek||w.week),datasets:ds},
       options:chartOpts({y:'LPS'})
     });
   }
   destroyChart('cond-approach');
   if(weekly.length){
+    const appVals=weekly.map(w=>+(w.condApproach||0).toFixed(2));
+    const ds=[{label:'Condenser Approach (°C)',data:appVals,backgroundColor:'rgba(245,158,11,.6)',borderRadius:3}];
+    const avgDs=avgLineDataset(appVals,'Average (°C)');if(avgDs)ds.push(avgDs);
     charts['cond-approach']=new Chart(document.getElementById('chart-cond-approach').getContext('2d'),{
-      type:'bar',data:{labels:weekly.map(w=>w.yearWeek||w.week),
-        datasets:[{label:'Condenser Approach (°C)',data:weekly.map(w=>+(w.condApproach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.6)',borderRadius:3}]},
+      type:'bar',data:{labels:weekly.map(w=>w.yearWeek||w.week),datasets:ds},
       options:chartOpts({y:'°C'})
     });
   }
@@ -3292,36 +3346,48 @@ function renderCT(){
   const xlabels=weekly.map(w=>w.yearWeek||w.week);
   destroyChart('ct-approach');
   if(weekly.length){
+    const approachVals=weekly.map(w=>+(w.ct1Approach||0).toFixed(2));
+    const ds=[
+      {label:'CT Approach (°C)',data:approachVals,backgroundColor:'rgba(245,158,11,.5)',borderRadius:3,yAxisID:'y'},
+      {label:'Wet Bulb (°C)',data:weekly.map(w=>+(w.wetBulb||0).toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:'Outside Air (°C)',data:weekly.map(w=>+(w.outsideAir||0).toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:'SUM WB & Approach',data:weekly.map(w=>+((w.wetBulb||0)+(w.ct1Approach||0)).toFixed(2)),type:'line',borderColor:'#8b5cf6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+    ];
+    const avgDs=avgLineDataset(approachVals,'Approach Average','y');if(avgDs)ds.push(avgDs);
     charts['ct-approach']=new Chart(document.getElementById('chart-ct-approach').getContext('2d'),{
-      type:'bar',data:{labels:xlabels,datasets:[
-        {label:'CT Approach (°C)',data:weekly.map(w=>+(w.ct1Approach||0).toFixed(2)),backgroundColor:'rgba(245,158,11,.5)',borderRadius:3,yAxisID:'y'},
-        {label:'Wet Bulb (°C)',data:weekly.map(w=>+(w.wetBulb||0).toFixed(2)),type:'line',borderColor:'#06b6d4',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
-        {label:'Outside Air (°C)',data:weekly.map(w=>+(w.outsideAir||0).toFixed(2)),type:'line',borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
-        {label:'SUM WB & Approach',data:weekly.map(w=>+((w.wetBulb||0)+(w.ct1Approach||0)).toFixed(2)),type:'line',borderColor:'#8b5cf6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
-      ]},options:chartOpts({y:'CT Approach (°C)',y2:'Temperature (°C)',y2right:true})
+      type:'bar',data:{labels:xlabels,datasets:ds},options:chartOpts({y:'CT Approach (°C)',y2:'Temperature (°C)',y2right:true})
     });
   }
   destroyChart('ct-tds');
   if(weekly.length){
+    const tdsVals=weekly.map(w=>+(w.tds||0).toFixed(0));
+    const phVals=weekly.map(w=>+(w.ph||0).toFixed(2));
+    const ds=[
+      {label:'TDS',data:tdsVals,borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false},
+      {label:'pH',data:phVals,borderColor:'#3b82f6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
+    ];
+    const tdsAvg=avgLineDataset(tdsVals,'TDS Average');if(tdsAvg)ds.push(tdsAvg);
+    const phAvg=avgLineDataset(phVals,'pH Average','y2');if(phAvg)ds.push(phAvg);
     charts['ct-tds']=new Chart(document.getElementById('chart-ct-tds').getContext('2d'),{
-      type:'line',data:{labels:xlabels,datasets:[
-        {label:'TDS',data:weekly.map(w=>+(w.tds||0).toFixed(0)),borderColor:'#10b981',pointRadius:3,borderWidth:2,fill:false},
-        {label:'pH',data:weekly.map(w=>+(w.ph||0).toFixed(2)),borderColor:'#3b82f6',pointRadius:3,borderWidth:2,fill:false,yAxisID:'y2'},
-      ]},options:chartOpts({y:'TDS',y2:'pH',y2right:true})
+      type:'line',data:{labels:xlabels,datasets:ds},options:chartOpts({y:'TDS',y2:'pH',y2right:true})
     });
   }
   destroyChart('ct-coc');
   if(weekly.length){
+    const cocVals=weekly.map(w=>+(w.coc||0).toFixed(2));
+    const ds=[{label:'COC',data:cocVals,backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}];
+    const avgDs=avgLineDataset(cocVals,'Average');if(avgDs)ds.push(avgDs);
     charts['ct-coc']=new Chart(document.getElementById('chart-ct-coc').getContext('2d'),{
-      type:'bar',data:{labels:xlabels,datasets:[{label:'COC',data:weekly.map(w=>+(w.coc||0).toFixed(2)),backgroundColor:'rgba(139,92,246,.6)',borderRadius:3}]},
-      options:chartOpts({y:'COC'})
+      type:'bar',data:{labels:xlabels,datasets:ds},options:chartOpts({y:'COC'})
     });
   }
   destroyChart('ct-makeup');
   if(weekly.length){
+    const makeupVals=weekly.map(w=>+(w.makeupWater||0).toFixed(2));
+    const ds=[{label:'Condenser Makeup Water (m³)',data:makeupVals,backgroundColor:'rgba(59,130,246,.6)',borderRadius:3}];
+    const avgDs=avgLineDataset(makeupVals,'Average (m³)');if(avgDs)ds.push(avgDs);
     charts['ct-makeup']=new Chart(document.getElementById('chart-ct-makeup').getContext('2d'),{
-      type:'bar',data:{labels:xlabels,datasets:[{label:'Condenser Makeup Water (m³)',data:weekly.map(w=>+(w.makeupWater||0).toFixed(2)),backgroundColor:'rgba(59,130,246,.6)',borderRadius:3}]},
-      options:chartOpts({y:'m³'})
+      type:'bar',data:{labels:xlabels,datasets:ds},options:chartOpts({y:'m³'})
     });
   }
 }
@@ -3433,9 +3499,22 @@ function renderPumpHealth(){
 
   const compareLabel=periodLabel(lastPer)||'Last Month';
 
+  // Occurrence-weighted overall average of a bucket metric across every frequency bucket —
+  // used for the "vs last month" % shift badge (a single headline number, vs. the chart's
+  // per-frequency-bucket breakdown).
+  const overallAvg=(buckets,metric)=>{
+    const totalOcc=buckets.reduce((s,b)=>s+b.occurrence,0);
+    if(!totalOcc)return null;
+    return buckets.reduce((s,b)=>s+b.occurrence*(b[metric]||0),0)/totalOcc;
+  };
+
   // series: array of {metric, label, color, showLastMonth} — lets one chart combine several
   // lines (e.g. Input Power + Hydraulic Power together, matching the reference Excel chart)
-  const mkChart=(canvasId,buckets,bucketsLast,series,axisLabel)=>{
+  // shiftMetric/higherIsBetter: which metric to summarize as a "+X% vs last month" badge in
+  // the card-sub, and whether an increase is good (green) or bad (red) — null/undefined for
+  // metrics where higher-vs-lower isn't a clear "better" (Flow, Head, Range&Approach), which
+  // still show the % shift but in a neutral color.
+  const mkChart=(canvasId,buckets,bucketsLast,series,axisLabel,shiftMetric,higherIsBetter)=>{
     destroyChart(canvasId);
     const el=document.getElementById('chart-'+canvasId);
     if(!el)return;
@@ -3444,7 +3523,18 @@ function renderPumpHealth(){
       if(sub) sub.textContent='No frequency data in the loaded file(s)';
       return;
     }
-    if(sub) sub.textContent=`Occurrence % + ${series.map(s=>s.label).join(' & ')} — Current + ${compareLabel}`;
+    let shiftHtml='';
+    if(shiftMetric){
+      const curAvg=overallAvg(buckets,shiftMetric);
+      const lastAvg=bucketsLast.length?overallAvg(bucketsLast,shiftMetric):null;
+      if(curAvg!=null&&lastAvg!=null&&lastAvg!==0){
+        const pct=(curAvg-lastAvg)/lastAvg*100;
+        const sign=pct>=0?'+':'';
+        const color=higherIsBetter==null?'var(--muted)':((higherIsBetter?pct<0:pct>0)?'var(--bad)':'var(--good)');
+        shiftHtml=` · <span style="font-weight:700;color:${color}">${sign}${pct.toFixed(1)}% vs ${compareLabel}</span>`;
+      }
+    }
+    if(sub) sub.innerHTML=`Occurrence % + ${series.map(s=>s.label).join(' & ')} — Current + ${compareLabel}${shiftHtml}`;
     const labels=buckets.map(b=>b.freq+' Hz');
     const fmt=v=>v==null?null:+v.toFixed(2);
     const ds=[
@@ -3466,32 +3556,32 @@ function renderPumpHealth(){
   mkChart('chwp-health-power',chwpThis,chwpLast,[
     {metric:'avgPower',label:withUnit('Input Power',U.hydraulicPower),color:'#10b981',showLastMonth:true},
     {metric:'avgHydraulicPower',label:withUnit('Hydraulic Power',U.hydraulicPower),color:'#06b6d4',showLastMonth:false},
-  ],withUnit('Power',U.hydraulicPower));
-  mkChart('chwp-health-flow',chwpThis,chwpLast,[{metric:'avgFlow',label:withUnit('Flow',U.flow),color:'#3b82f6',showLastMonth:true}],withUnit('Flow',U.flow));
-  mkChart('chwp-health-head',chwpThis,chwpLast,[{metric:'avgHead',label:withUnit('Head',U.head),color:'#8b5cf6',showLastMonth:true}],withUnit('Head',U.head));
-  mkChart('chwp-health-efficiency',chwpThis,chwpLast,[{metric:'avgEfficiency',label:withUnit('Efficiency',U.efficiency),color:'#f97316',showLastMonth:true}],withUnit('Efficiency',U.efficiency));
+  ],withUnit('Power',U.hydraulicPower),'avgPower',false);
+  mkChart('chwp-health-flow',chwpThis,chwpLast,[{metric:'avgFlow',label:withUnit('Flow',U.flow),color:'#3b82f6',showLastMonth:true}],withUnit('Flow',U.flow),'avgFlow',null);
+  mkChart('chwp-health-head',chwpThis,chwpLast,[{metric:'avgHead',label:withUnit('Head',U.head),color:'#8b5cf6',showLastMonth:true}],withUnit('Head',U.head),'avgHead',null);
+  mkChart('chwp-health-efficiency',chwpThis,chwpLast,[{metric:'avgEfficiency',label:withUnit('Efficiency',U.efficiency),color:'#f97316',showLastMonth:true}],withUnit('Efficiency',U.efficiency),'avgEfficiency',true);
 
   mkChart('cwp-health-power',cwpThis,cwpLast,[
     {metric:'avgPower',label:withUnit('Input Power',UC.hydraulicPower),color:'#10b981',showLastMonth:true},
     {metric:'avgHydraulicPower',label:withUnit('Hydraulic Power',UC.hydraulicPower),color:'#06b6d4',showLastMonth:false},
-  ],withUnit('Power',UC.hydraulicPower));
-  mkChart('cwp-health-flow',cwpThis,cwpLast,[{metric:'avgFlow',label:withUnit('Flow',U.flow),color:'#3b82f6',showLastMonth:true}],withUnit('Flow',U.flow));
-  mkChart('cwp-health-head',cwpThis,cwpLast,[{metric:'avgHead',label:withUnit('Head',UC.head),color:'#8b5cf6',showLastMonth:true}],withUnit('Head',UC.head));
-  mkChart('cwp-health-efficiency',cwpThis,cwpLast,[{metric:'avgEfficiency',label:withUnit('Efficiency',UC.efficiency),color:'#f97316',showLastMonth:true}],withUnit('Efficiency',UC.efficiency));
+  ],withUnit('Power',UC.hydraulicPower),'avgPower',false);
+  mkChart('cwp-health-flow',cwpThis,cwpLast,[{metric:'avgFlow',label:withUnit('Flow',U.flow),color:'#3b82f6',showLastMonth:true}],withUnit('Flow',U.flow),'avgFlow',null);
+  mkChart('cwp-health-head',cwpThis,cwpLast,[{metric:'avgHead',label:withUnit('Head',UC.head),color:'#8b5cf6',showLastMonth:true}],withUnit('Head',UC.head),'avgHead',null);
+  mkChart('cwp-health-efficiency',cwpThis,cwpLast,[{metric:'avgEfficiency',label:withUnit('Efficiency',UC.efficiency),color:'#f97316',showLastMonth:true}],withUnit('Efficiency',UC.efficiency),'avgEfficiency',true);
 
-  mkChart('ct-health-power',ctThis,ctLast,[{metric:'avgPower',label:withUnit('Power',U.hydraulicPower),color:'#10b981',showLastMonth:true}],withUnit('Power',U.hydraulicPower));
+  mkChart('ct-health-power',ctThis,ctLast,[{metric:'avgPower',label:withUnit('Power',U.hydraulicPower),color:'#10b981',showLastMonth:true}],withUnit('Power',U.hydraulicPower),'avgPower',false);
   mkChart('ct-health-range',ctThis,ctLast,[
     {metric:'avgRange',label:withUnit('Range',UT.range),color:'#8b5cf6',showLastMonth:true},
     {metric:'avgApproach',label:withUnit('Approach',UT.approach),color:'#3b82f6',showLastMonth:false},
-  ],withUnit('Range & Approach',UT.range));
-  mkChart('ct-health-effectiveness',ctThis,ctLast,[{metric:'avgEffectiveness',label:withUnit('Effectiveness',UT.effectiveness),color:'#f97316',showLastMonth:true}],withUnit('Effectiveness',UT.effectiveness));
+  ],withUnit('Range & Approach',UT.range),'avgRange',null);
+  mkChart('ct-health-effectiveness',ctThis,ctLast,[{metric:'avgEffectiveness',label:withUnit('Effectiveness',UT.effectiveness),color:'#f97316',showLastMonth:true}],withUnit('Effectiveness',UT.effectiveness),'avgEffectiveness',true);
 }
 
 // ═══════════════════════════════════════════════════
 // COMMENTS PAGE
 // ═══════════════════════════════════════════════════
 function renderComments(){
-  const comments=filteredData.flatMap(d=>d.comments);
+  const comments=filteredData.slice().sort((a,b)=>b.period.localeCompare(a.period)).flatMap(d=>d.comments);
   const el=document.getElementById('comments-detailed');
   if(!el)return;
   if(comments.length){
@@ -4397,6 +4487,27 @@ function sumMetrics(data){
 
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
 
+// Flat "Average" reference line across a weekly chart's whole x-axis, so a given week's
+// bar/point can be read against the period's mean at a glance — used on the Main CH,
+// CHWP, CWP and CT weekly charts (flow, approach, dT, setpoint, etc).
+function avgLineDataset(values,label,yAxisID){
+  const nums=values.filter(v=>v!=null&&!isNaN(v));
+  if(!nums.length)return null;
+  const avg=nums.reduce((s,v)=>s+v,0)/nums.length;
+  const ds={
+    label:label||'Average',
+    data:values.map(()=>+avg.toFixed(2)),
+    type:'line',
+    borderColor:'rgba(100,116,139,.75)',
+    borderDash:[6,4],
+    borderWidth:1.5,
+    pointRadius:0,
+    fill:false,
+  };
+  if(yAxisID)ds.yAxisID=yAxisID;
+  return ds;
+}
+
 function chartOpts({y='',y2='',y2right=false}={}){
   const base={
     responsive:true,maintainAspectRatio:false,
@@ -4572,10 +4683,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 
 /* KPI GRID */
 .kpi-grid{display:flex;flex-wrap:wrap;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;box-shadow:0 2px 8px rgba(10,61,124,.08)}
-.kpi{background:#fff;padding:18px 20px;flex:1 1 160px}
-#kpi-hotel{flex-wrap:nowrap}#kpi-hotel .kpi{flex:1 1 0;min-width:0}
-.kpi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;font-weight:600}
-.kpi-value{font-size:24px;font-weight:800;letter-spacing:-.5px}
+.kpi{background:#fff;padding:18px 20px;flex:1 1 160px;overflow:hidden}
+#kpi-hotel{flex-wrap:nowrap}#kpi-hotel .kpi{flex:1 1 0;min-width:0;padding:14px 10px}
+.kpi-label{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;font-weight:600;overflow-wrap:break-word}
+.kpi-value{font-size:24px;font-weight:800;letter-spacing:-.5px;overflow-wrap:break-word;word-break:break-word}
+#kpi-hotel .kpi-value{font-size:clamp(13px,1.5vw,24px)}
 .kpi-unit{font-size:11px;color:var(--muted);margin-top:2px}
 .blue{color:var(--ses-blue)}.cyan{color:var(--ses-mid)}.purple{color:var(--ses-green)}.green{color:var(--ses-green)}.warn{color:var(--warn)}.bad{color:var(--bad)}
 
@@ -5261,7 +5373,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
   <div class="header-right">
     <div class="page-tabs" id="page-tabs">
       <button class="page-tab active" onclick="showPage('home',this)">Home</button>
-      <button class="page-tab" onclick="showPage('monthly',this)">Monthly Overview</button>
+      <button class="page-tab" id="tab-monthly-overview" onclick="showPage('monthly',this)">Monthly Overview</button>
       <button class="page-tab" onclick="showPage('yearly',this)">Yearly Overview</button>
     </div>
     <span class="client-badge">👤 ${clientName}</span>
@@ -5283,7 +5395,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       A monthly and yearly view of your chiller plant's cooling output, energy consumption, and the savings delivered under your Cooling-as-a-Service agreement with SES.
     </p>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-      <button class="btn" style="background:var(--ses-green);color:#fff;padding:12px 28px;font-size:13px;border-radius:6px" onclick="document.querySelector('.page-tab[onclick*=\'monthly\']').click()">
+      <button class="btn" style="background:var(--ses-green);color:#fff;padding:12px 28px;font-size:13px;border-radius:6px" onclick="showPage('monthly',document.getElementById('tab-monthly-overview'))">
         📊 View Monthly Report
       </button>
       <button class="btn" style="background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);padding:12px 28px;font-size:13px;border-radius:6px" onclick="window.open('https://synergy.id','_blank')">
@@ -5467,11 +5579,31 @@ function fmt4(n){
   if(n==null||isNaN(n))return'—';
   return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
+// kW/TR efficiency values get 3 decimals throughout the Yearly tab — see the
+// main dashboard's fmtEff3 for the full rationale.
+function fmtEff3(n){
+  if(n==null||isNaN(n))return'—';
+  return n.toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3});
+}
 function fmtCompact(n,dec=2){
   if(n==null||isNaN(n))return'—';
   const abs=Math.abs(n);
   if(abs>=1e6)return(n/1e6).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec})+'M';
   return fmtNum(n,dec);
+}
+// See main dashboard's ashraeNeedlePos for the full rationale: the bar is 4
+// equal-width (25%) segments over unequal kW/TR ranges, so the needle must be
+// mapped piecewise to line up with the visible zone boundaries.
+function ashraeNeedlePos(eff){
+  const bounds=[0.5,0.7,0.9,1.1,1.2];
+  if(eff<=bounds[0])return 0;
+  if(eff>=bounds[4])return 100;
+  for(let i=0;i<4;i++){
+    if(eff<=bounds[i+1]){
+      return i*25+(eff-bounds[i])/(bounds[i+1]-bounds[i])*25;
+    }
+  }
+  return 100;
 }
 function periodLabel(p){if(!p||p==='—')return p;const[y,mo]=p.split('-');const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return(mn[parseInt(mo,10)-1]||mo)+' '+y}
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
@@ -5550,7 +5682,7 @@ function computeMonthlyStats(dataSubset){
   const energyPerRoom=metrics.rns>0?metrics.totalElec/metrics.rns:0;
 
   const eff=avgEff;
-  const ashraeNeedlePct=Math.min(100,Math.max(0,(eff-0.5)/(1.2-0.5)*100));
+  const ashraeNeedlePct=ashraeNeedlePos(eff);
   let ashraeZone='',ashraeColor='';
   if(eff<0.7){ashraeZone='EXCELLENT';ashraeColor='#1a6b3a'}
   else if(eff<0.9){ashraeZone='GOOD';ashraeColor='#2d8a4e'}
@@ -5583,9 +5715,9 @@ function renderMonthly(){
   const s=computeMonthlyStats(filteredData);
 
   document.getElementById('kpi-monthly').innerHTML=
-    '<div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">'+fmtCompact(s.totalCooling)+'</div><div class="kpi-unit">TRh</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">'+fmtCompact(s.totalPlant)+'</div><div class="kpi-unit">kWh</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">'+fmtCompact(s.elecSavings)+'</div><div class="kpi-unit">kWh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Cooling Produced</div><div class="kpi-value blue">'+fmtCompact(s.totalCooling,0)+'</div><div class="kpi-unit">TRh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Chiller Plant Electricity</div><div class="kpi-value cyan">'+fmtCompact(s.totalPlant,0)+'</div><div class="kpi-unit">kWh</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Electricity Savings</div><div class="kpi-value green">'+fmtCompact(s.elecSavings,0)+'</div><div class="kpi-unit">kWh</div></div>'+
     '<div class="kpi"><div class="kpi-label">Carbon Savings</div><div class="kpi-value green">'+fmt4(s.co2)+'</div><div class="kpi-unit">Tons of CO₂e</div></div>'+
     '<div class="kpi"><div class="kpi-label">Trees Planted Equiv.</div><div class="kpi-value green">'+fmtCompact(s.trees,0)+'</div><div class="kpi-unit">Trees 🌳</div></div>'+
     '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmt4(s.metrics.oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
@@ -5595,8 +5727,10 @@ function renderMonthly(){
   const ft=FACILITY_TYPES[CLIENT_FACILITY_TYPE]||FACILITY_TYPES.hotel;
   if(s.metrics.rns>0){
     hotelEl.style.display='flex';
+    const occPct=s.metrics.maxRns>0?(s.metrics.rns/s.metrics.maxRns*100):null;
     hotelEl.innerHTML=
       '<div class="kpi"><div class="kpi-label">'+ft.metricLabel+'</div><div class="kpi-value">'+fmtNum(s.metrics.rns)+'</div><div class="kpi-unit">'+ft.metricAbbr+' / '+ft.maxLabel+' '+fmtNum(s.metrics.maxRns)+'</div></div>'+
+      '<div class="kpi"><div class="kpi-label">'+ft.utilLabel+'</div><div class="kpi-value">'+(occPct!=null?fmtNum(occPct,0)+'%':'—')+'</div><div class="kpi-unit">of full '+ft.utilLabel.toLowerCase()+'</div></div>'+
       '<div class="kpi"><div class="kpi-label">Total Electricity</div><div class="kpi-value">'+fmtCompact(s.metrics.totalElec)+'</div><div class="kpi-unit">kWh</div></div>'+
       '<div class="kpi"><div class="kpi-label">Cooling / '+ft.metricAbbr+'</div><div class="kpi-value">'+fmt4(s.coolingPerRoom)+'</div><div class="kpi-unit">TRh/'+ft.metricAbbr+'</div></div>'+
       '<div class="kpi"><div class="kpi-label">Energy / '+ft.metricAbbr+'</div><div class="kpi-value">'+fmt4(s.energyPerRoom)+'</div><div class="kpi-unit">kWh/'+ft.metricAbbr+'</div></div>';
@@ -5683,8 +5817,8 @@ function renderYearly(){
   if(!periods.length)return;
 
   document.getElementById('kpi-yearly').innerHTML=
-    '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmt4(s.oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">'+fmt4(s.avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Old System Eff.</div><div class="kpi-value warn">'+fmtEff3(s.oldEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
+    '<div class="kpi"><div class="kpi-label">Avg Plant Eff.</div><div class="kpi-value purple">'+fmtEff3(s.avgEff)+'</div><div class="kpi-unit">kW/TR</div></div>'+
     '<div class="kpi"><div class="kpi-label">Avg Saving</div><div class="kpi-value green">'+s.avgSavingsPct+' %</div><div class="kpi-unit">vs old system</div></div>'+
     '<div class="kpi"><div class="kpi-label">Total Cooling</div><div class="kpi-value blue">'+fmtCompact(s.totCooling)+'</div><div class="kpi-unit">TRh</div></div>'+
     '<div class="kpi"><div class="kpi-label">Total Elec Savings</div><div class="kpi-value green">'+fmtCompact(s.totElecSavings)+'</div><div class="kpi-unit">kWh</div></div>'+
@@ -5702,9 +5836,12 @@ function renderYearly(){
   charts['yearly-load']=new Chart(document.getElementById('chart-yearly-load').getContext('2d'),{
     type:'bar',data:{labels,datasets:[
       {label:'Cooling Load (TRh)',data:periods.map(p=>+p.billing.reduce((s,r)=>s+r.cooling,0).toFixed(0)),backgroundColor:'rgba(59,130,246,.5)',borderRadius:3,yAxisID:'y'},
-      {label:'Plant Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;const tc=b.reduce((s,r)=>s+r.cooling,0);const tp=b.reduce((s,r)=>s+r.totalPlant,0);return tc>0?+(tp/tc).toFixed(2):0}),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-      {label:'Chiller Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;return b.length?+(b.reduce((s,r)=>s+r.chillerEff,0)/b.length).toFixed(2):0}),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
-    ]},options:chartOpts({y:'TRh',y2:'kW/TR',y2right:true})
+      {label:'Plant Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;const tc=b.reduce((s,r)=>s+r.cooling,0);const tp=b.reduce((s,r)=>s+r.totalPlant,0);return tc>0?+(tp/tc).toFixed(3):0}),type:'line',borderColor:'#10b981',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+      {label:'Chiller Eff (kW/TR)',data:periods.map(p=>{const b=p.billing;return b.length?+(b.reduce((s,r)=>s+r.chillerEff,0)/b.length).toFixed(3):0}),type:'line',borderColor:'#f59e0b',pointRadius:4,borderWidth:2,fill:false,yAxisID:'y2'},
+    ]},options:{
+      ...chartOpts({y:'TRh',y2:'kW/TR',y2right:true}),
+      plugins:{tooltip:{callbacks:{label:function(c){return c.dataset.yAxisID==='y2'?(c.dataset.label+': '+fmtEff3(c.raw)):(c.dataset.label+': '+c.raw);}}}}
+    }
   });
 
   destroyChart('yearly-room');
@@ -5722,8 +5859,8 @@ function renderYearly(){
     });
   }
 
-  // Comments
-  const comments=filteredData.flatMap(d=>d.comments||[]);
+  // Comments — most recent month first, so the list reads as a quick-context summary
+  const comments=filteredData.slice().sort((a,b)=>b.period.localeCompare(a.period)).flatMap(d=>d.comments||[]);
   const cl=document.getElementById('comments-list');
   if(comments.length){cl.innerHTML=comments.map(c=>'<div style="margin-bottom:6px;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--accent)">— '+c.text+'</div>').join('')}
   else{cl.innerHTML='<div style="color:var(--muted)">No comments found in loaded files.</div>'}
