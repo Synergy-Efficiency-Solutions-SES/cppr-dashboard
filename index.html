@@ -39,11 +39,20 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
   .page-tab{padding:0 9px;font-size:11px}
 }
 @media(max-width:820px){
-  header{padding:0 10px}
+  header{padding:8px 10px;height:auto;min-height:60px;flex-wrap:wrap;row-gap:6px;overflow:visible}
   .logo{gap:6px}
   .logo-text{font-size:12px}
   .btn{padding:6px 10px;font-size:11px}
   .btn span.btn-label{display:none}
+  /* On a phone-width screen, the tab bar and the header's buttons/badge were both flexible
+     children competing for space inside .header-right — the buttons/badge (fixed-width text,
+     can't shrink) always won, squeezing the tab bar down to 0 width and making page
+     navigation impossible. Below this width the tab bar instead drops to its own full-width
+     row underneath the logo/buttons, where it can use the full screen width and still
+     scrolls horizontally if it doesn't all fit. */
+  .header-right{flex-wrap:wrap;row-gap:6px;justify-content:flex-start}
+  .page-tabs{order:2;flex:1 1 100%;width:100%}
+  .page-tab{height:40px}
 }
 
 /* FILTERS BAR */
@@ -4911,6 +4920,20 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 .page-tab{padding:0 20px;height:60px;font-size:13px;font-weight:600;cursor:pointer;color:rgba(255,255,255,.7);border:none;background:none;transition:all .15s;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-3px;flex-shrink:0}
 .page-tab.active{color:#fff;border-bottom-color:var(--ses-green)}
 .page-tab:hover:not(.active){color:#fff;background:rgba(255,255,255,.08)}
+@media(max-width:820px){
+  header{padding:8px 10px;height:auto;min-height:60px;flex-wrap:wrap;row-gap:6px;overflow:visible}
+  .logo{gap:6px}
+  .logo-text{font-size:12px}
+  .logo-sub{display:none}
+  /* Same fix as the main dashboard: on a phone-width screen the tab bar and the client
+     badge were both flexible children of .header-right competing for space — the badge
+     (fixed-width text) always won, squeezing the tab bar to 0 width and making page
+     navigation impossible. Below this width the tab bar drops to its own full-width row
+     under the logo/badge, where it still scrolls horizontally if it doesn't all fit. */
+  .header-right{flex-wrap:wrap;row-gap:6px;justify-content:flex-start}
+  .page-tabs{order:2;flex:1 1 100%;width:100%}
+  .page-tab{height:40px;padding:0 14px;font-size:12px}
+}
 
 /* PAGES */
 .page{display:none;padding:20px 28px}
