@@ -38,21 +38,34 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
   .logo-sub{display:none}
   .page-tab{padding:0 9px;font-size:11px}
 }
+.mobile-nav-btn{display:none}
+.mobile-nav-panel{display:none;flex-direction:column;position:sticky;top:60px;z-index:199;background:var(--ses-dark);box-shadow:0 10px 20px rgba(0,0,0,.3);max-height:calc(100vh - 60px);overflow-y:auto}
+.mobile-nav-panel.open{display:flex}
+.mobile-nav-panel button{background:none;border:none;border-bottom:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.85);text-align:left;padding:14px 20px;font-size:13.5px;font-weight:600;cursor:pointer}
+.mobile-nav-panel button.active{color:#fff;background:rgba(255,255,255,.08);border-left:3px solid var(--ses-green)}
+.mobile-nav-panel button:hover{background:rgba(255,255,255,.08);color:#fff}
 @media(max-width:820px){
-  header{padding:8px 10px;height:auto;min-height:60px;flex-wrap:wrap;row-gap:6px;overflow:visible}
+  header{padding:0 10px}
   .logo{gap:6px}
   .logo-text{font-size:12px}
   .btn{padding:6px 10px;font-size:11px}
   .btn span.btn-label{display:none}
-  /* On a phone-width screen, the tab bar and the header's buttons/badge were both flexible
-     children competing for space inside .header-right — the buttons/badge (fixed-width text,
-     can't shrink) always won, squeezing the tab bar down to 0 width and making page
-     navigation impossible. Below this width the tab bar instead drops to its own full-width
-     row underneath the logo/buttons, where it can use the full screen width and still
-     scrolls horizontally if it doesn't all fit. */
-  .header-right{flex-wrap:wrap;row-gap:6px;justify-content:flex-start}
-  .page-tabs{order:2;flex:1 1 100%;width:100%}
-  .page-tab{height:40px}
+  /* On a phone-width screen there's no room for 13 tabs, and a horizontally-scrolling tab
+     row turned out to be too easy to miss entirely (a visitor sees only the first tab or two
+     and no obvious hint that the rest are reachable by scrolling). Below this width the tab
+     bar is replaced by one explicit "☰ Pages" button that opens a full-width dropdown list of
+     every page — unambiguous, no scrolling to discover. */
+  .page-tabs{display:none}
+  .mobile-nav-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0}
+}
+@media(max-width:480px){
+  /* On an actual phone screen (not just a narrow desktop window) the logo text plus the
+     hamburger button plus the two header buttons no longer fit on one 60px-tall row even
+     with everything else already shrunk — text was overlapping the buttons. The logo image
+     alone is still enough to identify the page, so the "CPPR Dashboard" text is dropped here
+     to free up the room the buttons need. */
+  .logo>div:last-child{display:none}
+  .mobile-nav-btn{padding:8px 10px}
 }
 
 /* FILTERS BAR */
@@ -892,10 +905,12 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <button class="page-tab" onclick="showPage('trending')">Trending</button>
       <button class="page-tab" onclick="showPage('raw')">Daily Data</button>
     </div>
+    <button class="mobile-nav-btn" id="mobile-nav-btn" onclick="toggleMobileNav()" style="display:none">☰ Pages</button>
     <button class="btn btn-ghost" onclick="resetDashboard()" style="font-size:12px;flex-shrink:0">+ Load Data</button>
     <button class="btn" onclick="exportClientView()" id="btn-export" style="display:none;background:var(--ses-green);color:#fff;font-size:12px;flex-shrink:0"><span class="btn-label">⬇ Export Client View</span></button>
   </div>
 </header>
+<div class="mobile-nav-panel" id="mobile-nav-panel"></div>
 
 <!-- DROP ZONE -->
 <div id="drop-zone">
@@ -966,7 +981,7 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
         <div style="font-size:20px;font-weight:800;color:var(--ses-dark)">Dashboard Pages</div>
         <div style="font-size:13px;color:var(--muted);margin-top:4px">Load a client's data, then jump to any page below</div>
       </div>
-      <button class="btn" style="background:var(--ses-green);color:#fff;padding:12px 28px;font-size:13px;border-radius:6px" onclick="document.getElementById('drop-zone').style.display='flex';document.getElementById('dashboard').style.display='none';document.getElementById('page-tabs').style.display='none'">
+      <button class="btn" style="background:var(--ses-green);color:#fff;padding:12px 28px;font-size:13px;border-radius:6px" onclick="document.getElementById('drop-zone').style.display='flex';document.getElementById('dashboard').style.display='none';document.getElementById('page-tabs').style.display='none';document.getElementById('mobile-nav-btn').style.display='none'">
         📂 Load Data Files
       </button>
     </div>
@@ -1793,6 +1808,38 @@ function showPageByName(id){
   renderCurrentPage();
 }
 
+// ── Mobile navigation menu ────────────────────────────
+// Below the phone-width breakpoint the horizontal tab bar is hidden (CSS) in favor of one
+// explicit "☰ Pages" button that opens a full-width dropdown listing every page — built by
+// mirroring whatever .page-tab buttons currently exist in #page-tabs, so it never drifts out
+// of sync with the desktop tab list.
+function buildMobileNavPanel(){
+  const panel=document.getElementById('mobile-nav-panel');
+  if(!panel)return;
+  panel.innerHTML='';
+  document.querySelectorAll('#page-tabs .page-tab').forEach(t=>{
+    const m=(t.getAttribute('onclick')||'').match(/'([^']+)'/);
+    const id=m?m[1]:null;
+    if(!id)return;
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.textContent=t.textContent;
+    if(t.classList.contains('active'))btn.classList.add('active');
+    btn.onclick=()=>navigateMobile(id);
+    panel.appendChild(btn);
+  });
+}
+function toggleMobileNav(){
+  const panel=document.getElementById('mobile-nav-panel');
+  if(panel)panel.classList.toggle('open');
+}
+function navigateMobile(id){
+  showPageByName(id);
+  buildMobileNavPanel(); // rebuild so the newly-active page shows highlighted in the list
+  const panel=document.getElementById('mobile-nav-panel');
+  if(panel)panel.classList.remove('open');
+}
+
 // ═══════════════════════════════════════════════════
 // FILE HANDLING
 // ═══════════════════════════════════════════════════
@@ -2346,6 +2393,9 @@ async function buildDashboard(){
   document.getElementById('drop-zone').style.display='none';
   document.getElementById('dashboard').style.display='block';
   document.getElementById('page-tabs').style.display='flex';
+  const mobBtn=document.getElementById('mobile-nav-btn');
+  if(mobBtn) mobBtn.style.display=''; // cede to CSS: hidden on desktop, shown under the mobile breakpoint
+  buildMobileNavPanel();
   const btnExp=document.getElementById('btn-export');
   if(btnExp) btnExp.style.display='inline-flex';
   currentPage='home';
@@ -4834,6 +4884,9 @@ function resetDashboard(){
   closeChartFullscreen();
   document.getElementById('dashboard').style.display='none';
   document.getElementById('page-tabs').style.display='none';
+  document.getElementById('mobile-nav-btn').style.display='none';
+  const mobPanel=document.getElementById('mobile-nav-panel');
+  if(mobPanel){mobPanel.classList.remove('open');mobPanel.innerHTML='';}
   document.getElementById('drop-zone').style.display='flex';
   document.getElementById('file-list').innerHTML='';
   document.getElementById('scan-status').style.display='none';
@@ -4920,19 +4973,32 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 .page-tab{padding:0 20px;height:60px;font-size:13px;font-weight:600;cursor:pointer;color:rgba(255,255,255,.7);border:none;background:none;transition:all .15s;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-3px;flex-shrink:0}
 .page-tab.active{color:#fff;border-bottom-color:var(--ses-green)}
 .page-tab:hover:not(.active){color:#fff;background:rgba(255,255,255,.08)}
+.mobile-nav-btn{display:none}
+.mobile-nav-panel{display:none;flex-direction:column;position:sticky;top:60px;z-index:199;background:var(--ses-dark);box-shadow:0 10px 20px rgba(0,0,0,.3);max-height:calc(100vh - 60px);overflow-y:auto}
+.mobile-nav-panel.open{display:flex}
+.mobile-nav-panel button{background:none;border:none;border-bottom:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.85);text-align:left;padding:14px 20px;font-size:13.5px;font-weight:600;cursor:pointer}
+.mobile-nav-panel button.active{color:#fff;background:rgba(255,255,255,.08);border-left:3px solid var(--ses-green)}
+.mobile-nav-panel button:hover{background:rgba(255,255,255,.08);color:#fff}
 @media(max-width:820px){
-  header{padding:8px 10px;height:auto;min-height:60px;flex-wrap:wrap;row-gap:6px;overflow:visible}
+  header{padding:0 10px}
   .logo{gap:6px}
   .logo-text{font-size:12px}
   .logo-sub{display:none}
-  /* Same fix as the main dashboard: on a phone-width screen the tab bar and the client
-     badge were both flexible children of .header-right competing for space — the badge
-     (fixed-width text) always won, squeezing the tab bar to 0 width and making page
-     navigation impossible. Below this width the tab bar drops to its own full-width row
-     under the logo/badge, where it still scrolls horizontally if it doesn't all fit. */
-  .header-right{flex-wrap:wrap;row-gap:6px;justify-content:flex-start}
-  .page-tabs{order:2;flex:1 1 100%;width:100%}
-  .page-tab{height:40px;padding:0 14px;font-size:12px}
+  /* Same fix as the main dashboard: a horizontally-scrolling tab row is too easy to miss on
+     a phone (no obvious hint there's more to scroll to), and it was also getting squeezed to
+     0 width by the client badge next to it. Below this width the tab bar is replaced by one
+     explicit "☰ Pages" button that opens a full-width dropdown list of every page. */
+  .page-tabs{display:none}
+  .mobile-nav-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0}
+}
+@media(max-width:480px){
+  /* On an actual phone screen the logo text plus the hamburger button plus the client badge
+     no longer fit on one 60px-tall row even with everything else already shrunk — text was
+     overlapping the buttons. The logo image alone is still enough to identify the page, so
+     the "CPPR Dashboard" text is dropped here to free up the room the badge/button need. */
+  .logo>div:last-child{display:none}
+  .mobile-nav-btn{padding:8px 10px}
+  .client-badge{font-size:11px;padding:5px 10px}
 }
 
 /* PAGES */
@@ -5635,9 +5701,11 @@ RU5ErkJggg==" style="height:28px;width:auto;display:block;margin-left:4px"/>
       <button class="page-tab" id="tab-monthly-overview" onclick="showPage('monthly',this)">Monthly Overview</button>
       <button class="page-tab" onclick="showPage('yearly',this)">Yearly Overview</button>
     </div>
+    <button class="mobile-nav-btn" id="mobile-nav-btn" onclick="toggleMobileNav()">☰ Pages</button>
     <span class="client-badge">👤 ${clientName}</span>
   </div>
 </header>
+<div class="mobile-nav-panel" id="mobile-nav-panel"></div>
 
 <div class="filters-bar">
   <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Filters:</span>
@@ -5909,6 +5977,36 @@ function showPage(id,btn){
   else if(id==='yearly') renderYearly();
 }
 
+// Mobile nav dropdown — same idea as the main dashboard: below the phone-width breakpoint
+// the tab bar is hidden in favor of one explicit button that opens a full-width page list,
+// built by mirroring whatever .page-tab buttons exist in #page-tabs.
+function buildMobileNavPanel(){
+  const panel=document.getElementById('mobile-nav-panel');
+  if(!panel)return;
+  panel.innerHTML='';
+  document.querySelectorAll('#page-tabs .page-tab').forEach(t=>{
+    const m=(t.getAttribute('onclick')||'').match(/'([^']+)'/);
+    const id=m?m[1]:null;
+    if(!id)return;
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.textContent=t.textContent;
+    if(t.classList.contains('active'))btn.classList.add('active');
+    btn.onclick=()=>navigateMobile(id);
+    panel.appendChild(btn);
+  });
+}
+function toggleMobileNav(){
+  const panel=document.getElementById('mobile-nav-panel');
+  if(panel)panel.classList.toggle('open');
+}
+function navigateMobile(id){
+  showPage(id);
+  buildMobileNavPanel();
+  const panel=document.getElementById('mobile-nav-panel');
+  if(panel)panel.classList.remove('open');
+}
+
 // ── Filters ────────────────────────────────────────
 function buildFilters(){
   const periods=[...new Set(allData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
@@ -6147,6 +6245,7 @@ function renderYearly(){
 buildFilters();
 filterDashboard();
 renderMonthly();
+buildMobileNavPanel();
 <\/script>
 </body>
 </html>`;
