@@ -2376,7 +2376,7 @@ async function buildDashboard(){
 // Shared by buildDashboard() (fresh Excel parse) and loadDataFile() (re-loading a
 // previously exported .json data file) — everything from here down only cares that
 // `allData` is already populated, not how it got that way.
-function finalizeDashboard(){
+function finalizeDashboard(explicitFacilityType){
   const periods=[...new Set(allData.map(d=>d.period).filter(p=>p&&p!=='—'))].sort();
   const years=[...new Set(periods.map(p=>p.split('-')[0]))].sort();
   const selY=document.getElementById('sel-year');
@@ -2395,13 +2395,18 @@ function finalizeDashboard(){
   }
 
   // Auto-detect facility type from the loaded Excel files' "Facility Type" column
-  // (see parseFile()). Picks the most common value found; falls back to Hotel if no file
-  // specifies one (e.g. older files created before this column existed). You can still
-  // override the pre-selected value manually via the dropdown if it's wrong.
+  // (see parseFile()). Priority: an explicit type carried in a team data file (highest —
+  // someone already set this correctly for this client) > the Excel column vote > whatever
+  // was last picked for this exact client name in this browser (rememberFacilityType()) >
+  // Hotel as the last resort. This is what stops a client's facility type silently
+  // reverting to Hotel every time their files are reloaded — it used to, which is how a
+  // factory's export once shipped with hotel labels on it.
   const facilityVotes={};
   allData.forEach(d=>{const f=d.metrics?.facilityType;if(f) facilityVotes[f]=(facilityVotes[f]||0)+1;});
   const detected=Object.keys(facilityVotes).sort((a,b)=>facilityVotes[b]-facilityVotes[a])[0];
-  selectedFacilityType=detected||'hotel';
+  const remembered=recallFacilityType(clientNames);
+  selectedFacilityType=explicitFacilityType||detected||remembered||'hotel';
+  rememberFacilityType(clientNames,selectedFacilityType);
   const selFT=document.getElementById('sel-facility-type');
   if(selFT) selFT.value=selectedFacilityType;
   updateTrendMetricLabels();
@@ -2510,8 +2515,32 @@ document.addEventListener('click',e=>{
 
 function onFacilityTypeChange(){
   selectedFacilityType=document.getElementById('sel-facility-type').value;
+  rememberFacilityType([...new Set(allData.map(d=>d.client))].filter(c=>c&&c!=='Inconnu'),selectedFacilityType);
   updateTrendMetricLabels();
   renderCurrentPage();
+}
+
+// Remembers the facility type manually picked for a given client name, in this browser,
+// so it's still there next time that client's Excel files are loaded — instead of quietly
+// resetting to Hotel (the bug that once let a factory client's export go out with hotel
+// labels on it). Keyed by client name rather than anything file-related, since the same
+// client's data can arrive as different files/folders month to month.
+function facilityTypeStoreKey(){ return 'cppr-facility-type-by-client'; }
+function rememberFacilityType(clientNames,facilityType){
+  if(!clientNames||!clientNames.length)return;
+  try{
+    const store=JSON.parse(localStorage.getItem(facilityTypeStoreKey())||'{}');
+    clientNames.forEach(c=>{store[c]=facilityType;});
+    localStorage.setItem(facilityTypeStoreKey(),JSON.stringify(store));
+  }catch(e){/* localStorage unavailable (private mode, etc.) — safe to skip */}
+}
+function recallFacilityType(clientNames){
+  if(!clientNames||!clientNames.length)return null;
+  try{
+    const store=JSON.parse(localStorage.getItem(facilityTypeStoreKey())||'{}');
+    for(const c of clientNames){ if(store[c]) return store[c]; }
+  }catch(e){/* localStorage unavailable — fall through to the 'hotel' default */}
+  return null;
 }
 
 function onYearChange(){
@@ -4942,7 +4971,11 @@ function exportDataFile(){
   const stamp=new Date().toISOString().slice(0,10);
   // Unlike exportClientView(), keep rawData — the Daily Data and Trending pages need it,
   // and this file is only ever shared between engineers, not put on a public web page.
-  const blob=new Blob([JSON.stringify(allData)],{type:'application/json'});
+  // Also carries the currently-selected facility type: without this, a teammate loading
+  // the file on their own machine has no way to know it was set to "Factory" rather than
+  // whatever the auto-detect/default would pick — it's saved once here instead of relying
+  // on every machine independently guessing (or remembering) the right value.
+  const blob=new Blob([JSON.stringify({allData,facilityType:selectedFacilityType})],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
@@ -4960,10 +4993,19 @@ function loadDataFile(file){
   r.onload=e=>{
     try{
       const parsed=JSON.parse(e.target.result);
-      if(!Array.isArray(parsed))throw new Error('not an array');
-      allData=parsed;
+      // Accept both the current format ({allData, facilityType}) and the plain array
+      // this feature originally exported, so older team data files still load fine.
+      let loadedFacilityType=null;
+      if(Array.isArray(parsed)){
+        allData=parsed;
+      }else if(parsed&&Array.isArray(parsed.allData)){
+        allData=parsed.allData;
+        loadedFacilityType=parsed.facilityType||null;
+      }else{
+        throw new Error('unrecognized format');
+      }
       pendingFiles.length=0;
-      finalizeDashboard();
+      finalizeDashboard(loadedFacilityType);
     }catch(err){
       console.error(err);
       alert('Could not read this data file — it doesn\'t look like a file exported from "💾 Export Data".');
@@ -4982,6 +5024,15 @@ function loadDataFile(file){
 // ═══════════════════════════════════════════════════
 function exportClientView(){
   if(!allData.length){ alert('No data loaded.'); return; }
+
+  // Safety net: the facility type (Hotel/Factory/etc.) controls the labels shown to the
+  // client (e.g. "Room Nights Sold" vs "Ton Production") and is easy to leave on whatever
+  // it defaulted to without noticing — this stops that from silently shipping in a client
+  // export by making the engineer confirm it right before the file is generated.
+  const ftConfirm=FACILITY_TYPES[selectedFacilityType]||FACILITY_TYPES.hotel;
+  if(!confirm(`Type d'établissement pour cet export : "${ftConfirm.name}".\n\nSi ce n'est pas le bon, annule et corrige le filtre "Type d'établissement" en haut du dashboard avant d'exporter.\n\nContinuer avec "${ftConfirm.name}" ?`)){
+    return;
+  }
 
   // 'Inconnu' is just the fallback tag for a file that was loaded loose (not inside a
   // client-named folder) — it's not a real client name, so when the loaded data also
@@ -6085,6 +6136,11 @@ function buildFilters(){
   const years=[...new Set(periods.map(p=>p.split('-')[0]))].sort();
   document.getElementById('sel-year').innerHTML='<option value="">All Years</option>'+years.map(y=>'<option value="'+y+'">'+y+'</option>').join('');
   document.getElementById('sel-month').innerHTML='<option value="">All Months</option>'+periods.map(p=>'<option value="'+p+'">'+(periodLabel(p)||p)+'</option>').join('');
+  // Open on the most recent month only (same as the main dashboard) rather than "All Months" —
+  // the client should land on current performance first, and can switch to "All Months" or
+  // pick an earlier one themselves.
+  const latestPeriod=periods[periods.length-1];
+  if(latestPeriod) document.getElementById('sel-month').value=latestPeriod;
 }
 function onYearChange(){
   const year=document.getElementById('sel-year').value;
